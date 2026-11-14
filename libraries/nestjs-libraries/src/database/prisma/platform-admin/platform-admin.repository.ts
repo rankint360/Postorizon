@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaRepository } from '@gitroom/nestjs-libraries/database/prisma/prisma.service';
 import { INTEGRATION_TOKEN_ENCRYPTION_PREFIX } from '@gitroom/nestjs-libraries/database/prisma/integrations/integration.token.crypto';
 
@@ -270,7 +271,10 @@ export class PlatformAdminRepository {
     action: string;
     targetType: string;
     targetId?: string;
-    metadata?: Record<string, unknown>;
+    // Prisma.InputJsonValue, not Record<string, unknown>: the latter is
+    // not assignable to the generated Json field type (its index values
+    // are `unknown`, which InputJsonObject does not accept).
+    metadata?: Prisma.InputJsonValue;
   }) {
     return this._auditLog.model.adminAuditLog.create({
       data: {

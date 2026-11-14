@@ -1,5 +1,5 @@
 import { HttpException, Injectable } from '@nestjs/common';
-import { User } from '@prisma/client';
+import { Prisma, User } from '@prisma/client';
 import {
   PlatformAdminRepository,
   PageParams,
@@ -54,7 +54,7 @@ export class PlatformAdminService {
     action: string,
     targetType: 'user' | 'organization',
     targetId: string,
-    metadata?: Record<string, unknown>
+    metadata?: Prisma.InputJsonValue
   ) {
     return this._repository.createAuditEntry({
       adminUserId: admin.id,
