@@ -74,15 +74,15 @@ export const CaptureComponent = () => {
         type: 'draft',
         date: new Date().toISOString(),
         shortLink: false,
-        tags: [],
+        tags: [] as { value: string; label: string }[],
         posts: selectedChannels.map((ch: any) => ({
           group,
           integration: { id: ch.id },
           settings: {
             __type: ch.identifier,
             title: text.slice(0, 80),
-            tags: [],
-            subreddit: [],
+            tags: [] as any[],
+            subreddit: [] as any[],
           },
           value: [
             {
