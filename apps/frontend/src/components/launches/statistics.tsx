@@ -6,6 +6,7 @@ import { ChartSocial } from '@gitroom/frontend/components/analytics/chart-social
 import { Select } from '@gitroom/react/form/select';
 import { LoadingComponent } from '@gitroom/frontend/components/layout/loading';
 import { MissingReleaseModal } from '@gitroom/frontend/components/launches/missing-release.modal';
+import { DeliveryTimeline } from '@gitroom/frontend/components/launches/delivery.timeline';
 
 interface AnalyticsData {
   label: string;
@@ -190,6 +191,14 @@ export const StatisticsModal: FC<{
                 {t('no_statistics_available', 'No statistics available for this post')}
               </div>
             )}
+        </div>
+      )}
+      {/* Postorizon Phase 4: delivery timeline (§3.2.4) — shown in both
+          the normal and the missing-release states; it carries its own
+          loading state and renders nothing until its data arrives. */}
+      {!isLoading && (
+        <div className="mt-[24px]">
+          <DeliveryTimeline postId={postId} />
         </div>
       )}
     </div>

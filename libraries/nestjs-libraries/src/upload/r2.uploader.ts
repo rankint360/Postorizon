@@ -7,6 +7,7 @@ import {
   AbortMultipartUploadCommand,
   PutObjectCommand,
   GetObjectCommand,
+  HeadObjectCommand,
   DeleteObjectCommand,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
@@ -15,6 +16,7 @@ import crypto from 'crypto';
 import path from 'path';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import { UploadFactory } from '@gitroom/nestjs-libraries/upload/upload.factory';
+import { getMaxSize } from '@gitroom/nestjs-libraries/upload/custom.upload.validation';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { fileTypeFromBuffer } = require('file-type');
 
@@ -248,6 +250,21 @@ export async function completeMultipartUpload(req: Request, res: Response) {
       return res
         .status(400)
         .json({ message: 'File contents do not match declared type.' });
+    }
+
+    // Phase 4 security: the streamed upload path caps size in-stream,
+    // but multipart parts were never totalled, so an authenticated user
+    // could assemble an object past the cap. Enforce the same per-type
+    // limit on the completed object and delete on oversize, mirroring
+    // the type-mismatch handling above.
+    const meta = await R2.send(
+      new HeadObjectCommand({ Bucket: CLOUDFLARE_BUCKETNAME, Key: key })
+    );
+    if ((meta.ContentLength ?? 0) > getMaxSize(expectedMime)) {
+      await R2.send(
+        new DeleteObjectCommand({ Bucket: CLOUDFLARE_BUCKETNAME, Key: key })
+      );
+      return res.status(400).json({ message: 'File is too large.' });
     }
 
     response.Location =

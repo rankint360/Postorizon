@@ -11,6 +11,7 @@ import {
   Res,
 } from '@nestjs/common';
 import { PostsService } from '@gitroom/nestjs-libraries/database/prisma/posts/posts.service';
+import { PostDeliveryService } from '@gitroom/nestjs-libraries/database/prisma/posts/post.delivery.service';
 import { GetOrgFromRequest } from '@gitroom/nestjs-libraries/user/org.from.request';
 import { Organization, User } from '@prisma/client';
 import { GetPostsDto } from '@gitroom/nestjs-libraries/dtos/posts/get.posts.dto';
@@ -41,7 +42,8 @@ export class PostsController {
   constructor(
     private _postsService: PostsService,
     private _agentGraphService: AgentGraphService,
-    private _shortLinkService: ShortLinkService
+    private _shortLinkService: ShortLinkService,
+    private _postDeliveryService: PostDeliveryService
   ) {}
 
   @Get('/:id/statistics')
@@ -66,6 +68,16 @@ export class PostsController {
     @Param('id') id: string
   ) {
     return this._postsService.getReleaseURL(org.id, id);
+  }
+
+  // Postorizon Phase 4: per-post delivery timeline (§3.2.4) — the
+  // publish-status view behind GET /posts/:id/statistics' modal.
+  @Get('/:id/delivery')
+  async getDeliveryTimeline(
+    @GetOrgFromRequest() org: Organization,
+    @Param('id') id: string
+  ) {
+    return this._postDeliveryService.getDeliveryTimeline(org.id, id);
   }
 
   @Put('/:id/release-id')

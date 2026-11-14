@@ -66,9 +66,17 @@ export class LoadToolsService {
         'Agent that helps schedule and list social media posts for users',
       instructions: ({ requestContext }) => {
         const ui: string = requestContext.get('ui' as never);
+        // Postorizon Phase 4: set by the /copilot/agent endpoint when
+        // the request's forwarded props named a customer group whose
+        // brand-voice profile resolved (see copilot.controller.ts).
+        const brandVoice: string = requestContext.get('brandVoice' as never);
         return `
       Global information:
         - Date (UTC): ${dayjs().format('YYYY-MM-DD HH:mm:ss')}
+      ${brandVoice ? `
+      Brand voice for the customer group this conversation is about — follow it for every post you draft for this group:
+${brandVoice}
+      ` : ''}
 
       You are an agent that helps manage and schedule social media posts for users, you can:
         - Schedule posts into the future, or now, adding texts, images and videos

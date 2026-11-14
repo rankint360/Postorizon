@@ -19,6 +19,7 @@ import { SubscriptionService } from '@gitroom/nestjs-libraries/database/prisma/s
 import { MastraAgent } from '@ag-ui/mastra';
 import { MastraService } from '@gitroom/nestjs-libraries/chat/mastra.service';
 import { AiKeysService } from '@gitroom/nestjs-libraries/database/prisma/ai/ai.keys.service';
+import { BrandVoiceService } from '@gitroom/nestjs-libraries/database/prisma/ai/brand.voice.service';
 import { Request, Response } from 'express';
 import { RequestContext } from '@mastra/core/di';
 import { CheckPolicies } from '@gitroom/backend/services/auth/permissions/permissions.ability';
@@ -28,6 +29,10 @@ export type ChannelsContext = {
   integrations: string;
   organization: string;
   ui: string;
+  // Postorizon Phase 4: rendered brand-voice fragment for the customer
+  // group named by the request's forwarded props, when one was given
+  // and resolved. Absent = behaviour identical to before.
+  brandVoice?: string;
 };
 
 // the copilot runtime writes its own CORS headers on the response, keep them aligned with main.ts
@@ -45,7 +50,8 @@ export class CopilotController {
   constructor(
     private _subscriptionService: SubscriptionService,
     private _mastraService: MastraService,
-    private _aiKeysService: AiKeysService
+    private _aiKeysService: AiKeysService,
+    private _brandVoiceService: BrandVoiceService
   ) {}
   @Post('/chat')
   async chatAgent(@Req() req: Request, @Res() res: Response) {
@@ -108,6 +114,29 @@ export class CopilotController {
       'integrations',
       req?.body?.body?.forwardedProps?.integrations || []
     );
+
+    // Postorizon Phase 4 — brand voice through the agent seam (the
+    // documented unblock for the Phase 2 remain; /copilot/chat has no
+    // such seam and stays untouched). When the client's forwarded props
+    // name a customer group, resolve its brand-voice profile and hand
+    // the rendered fragment to the agent through the request context,
+    // where the agent's instructions pick it up. The org is always the
+    // authenticated request's org: getProfile validates that the
+    // customer belongs to it and throws otherwise, and any failure
+    // (foreign or unknown customer, no profile) simply leaves the
+    // context unset — the request then behaves exactly as before.
+    const customerId = req?.body?.body?.forwardedProps?.customerId;
+    if (typeof customerId === 'string' && customerId) {
+      const profile = await this._brandVoiceService
+        .getProfile(organization.id, customerId)
+        .catch(() => null);
+      const fragment = profile
+        ? this._brandVoiceService.voicePromptFragment(profile)
+        : '';
+      if (fragment) {
+        requestContext.set('brandVoice', fragment);
+      }
+    }
 
     requestContext.set('organization', JSON.stringify(organization));
     requestContext.set('ui', 'true');

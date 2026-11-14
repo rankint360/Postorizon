@@ -12,6 +12,7 @@ import { IntegrationHealthService } from '@gitroom/nestjs-libraries/database/pri
 import { IntegrationRepository } from '@gitroom/nestjs-libraries/database/prisma/integrations/integration.repository';
 import { PostsService } from '@gitroom/nestjs-libraries/database/prisma/posts/posts.service';
 import { PostsRepository } from '@gitroom/nestjs-libraries/database/prisma/posts/posts.repository';
+import { PostDeliveryService } from '@gitroom/nestjs-libraries/database/prisma/posts/post.delivery.service';
 import { PostApprovalsService } from '@gitroom/nestjs-libraries/database/prisma/posts/post.approvals.service';
 import { PostApprovalsRepository } from '@gitroom/nestjs-libraries/database/prisma/posts/post.approvals.repository';
 import { AiKeysRepository } from '@gitroom/nestjs-libraries/database/prisma/ai/ai.keys.repository';
@@ -93,6 +94,7 @@ import { AdminStatsService } from '@gitroom/nestjs-libraries/database/prisma/adm
     IntegrationRepository,
     PostsService,
     PostsRepository,
+    PostDeliveryService,
     PostApprovalsService,
     PostApprovalsRepository,
     AiKeysRepository,

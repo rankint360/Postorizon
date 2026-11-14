@@ -47,6 +47,20 @@ export const AgentChat: FC = () => {
   const { properties } = useContext(PropertiesContext);
   const t = useT();
 
+  // Postorizon Phase 4: when every selected channel belongs to a single
+  // customer group, that group is the conversation's brand context —
+  // forward its id so the agent endpoint can resolve the group's
+  // brand-voice profile. Mixed-group or empty selections forward
+  // nothing, and the agent then behaves exactly as before.
+  const customerIds = Array.from(
+    new Set(
+      properties
+        .map((p: any) => p?.customer?.id)
+        .filter((id: any) => typeof id === 'string' && !!id)
+    )
+  );
+  const customerId = customerIds.length === 1 ? customerIds[0] : undefined;
+
   return (
     <CopilotKit
       {...(params.id === 'new' ? {} : { threadId: params.id })}
@@ -57,6 +71,7 @@ export const AgentChat: FC = () => {
       agent="postiz"
       properties={{
         integrations: properties,
+        ...(customerId ? { customerId } : {}),
       }}
     >
       <Hooks />

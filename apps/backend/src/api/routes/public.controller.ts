@@ -55,11 +55,38 @@ export class PublicController {
 
   @Get(`/posts/:id`)
   async getPreview(@Param('id') id: string) {
+    const rawPosts = await this._postsService.getPostsRecursively(id, true);
+    if (!rawPosts.length) {
+      return rawPosts;
+    }
+    // Phase 3 white-label: the branding of the post's organization
+    // (safe display fields only), mirroring PublicPostApprovalsController.
+    // Read before the field strip below removes organizationId from the
+    // response.
+    const branding = await this._brandingService.getBranding(
+      rawPosts[0].organizationId
+    );
     // the batch only links the posts in the dashboard, it stays out of the
-    // public preview
-    const posts = (await this._postsService.getPostsRecursively(id, true)).map(
-      ({ childrenPost, batchId, ...p }) => ({
+    // public preview. Phase 4 security: this endpoint needs no token, so
+    // the post row is stripped of credential-bearing and internal fields
+    // before it leaves — above all approvalToken, which on its own
+    // authorises approving the post through the public approval link.
+    // organizationId stays: the preview page passes it to its comments
+    // context for the org-member resolve check, and on its own it
+    // authorises nothing (every org-scoped endpoint still requires auth
+    // or a token).
+    return rawPosts.map(
+      ({
+        childrenPost,
+        batchId,
+        approvalToken,
+        integrationId,
+        submittedForOrderId,
+        submittedForOrganizationId,
+        ...p
+      }) => ({
         ...p,
+        branding,
         ...(p.integration
           ? {
               integration: {
@@ -73,16 +100,6 @@ export class PublicController {
           : {}),
       })
     );
-    if (!posts.length) {
-      return posts;
-    }
-    // Phase 3 white-label: the branding of the post's organization
-    // (safe display fields only — never the org id itself), mirroring
-    // PublicPostApprovalsController.
-    const branding = await this._brandingService.getBranding(
-      posts[0].organizationId
-    );
-    return posts.map((p) => ({ ...p, branding }));
   }
 
   @Get(`/posts/:id/comments`)

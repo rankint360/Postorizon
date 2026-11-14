@@ -59,22 +59,33 @@ export const tzOffsetMinutes = (timeZone: string, date = new Date()): number => 
  * component renders nothing — the composer is unchanged until the data
  * exists (the API states its minimum: 8 sampled posts).
  */
-export const BestTimeChips: FC<{ onPick: (date: dayjs.Dayjs) => void }> = ({
-  onPick,
-}) => {
+export const BestTimeChips: FC<{
+  onPick: (date: dayjs.Dayjs) => void;
+  /**
+   * Postorizon Phase 4: when the composer targets exactly one channel,
+   * the caller passes its id and the suggestions come from that
+   * channel's own engagement (the API already supported the filter);
+   * multi-channel composers leave it unset and stay org-wide.
+   */
+  integrationId?: string;
+}> = ({ onPick, integrationId }) => {
   const fetch = useFetch();
   const t = useT();
 
   const load = useCallback(async () => {
     const offset = tzOffsetMinutes(getTimezone());
-    const res = await fetch(`/engagement/best-times?tzOffset=${offset}`);
+    const res = await fetch(
+      `/engagement/best-times?tzOffset=${offset}${
+        integrationId ? `&integrationId=${integrationId}` : ''
+      }`
+    );
     if (!res.ok) {
       return null;
     }
     return (await res.json()) as BestTimesResponse;
-  }, [fetch]);
+  }, [fetch, integrationId]);
 
-  const { data } = useSWR('best-time-chips', load, {
+  const { data } = useSWR(`best-time-chips-${integrationId || 'org'}`, load, {
     revalidateOnFocus: false,
     revalidateOnReconnect: false,
     revalidateIfStale: false,

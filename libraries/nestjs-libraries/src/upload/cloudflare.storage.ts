@@ -17,6 +17,7 @@ import axios from 'axios';
 import { isSafePublicHttpsUrl } from '@gitroom/nestjs-libraries/dtos/webhooks/webhook.url.validator';
 import { ssrfSafeDispatcher } from '@gitroom/nestjs-libraries/dtos/webhooks/ssrf.safe.dispatcher';
 import { parseDataUrl } from '@gitroom/nestjs-libraries/upload/data.url';
+import { getMaxSize } from '@gitroom/nestjs-libraries/upload/custom.upload.validation';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { fileTypeFromBuffer } = require('file-type');
 
@@ -104,6 +105,16 @@ class CloudflareStorage implements IUploadProvider {
     const detected = await fileTypeFromBuffer(body);
     if (!detected || !ALLOWED_MIME_TYPES.has(detected.mime)) {
       throw new Error('Unsupported file type.');
+    }
+    // Phase 4 security: the body is fully buffered above, so cap it with
+    // the same per-type limits as the streamed upload path before it is
+    // stored anywhere (getMaxSize covers image/video; storage also
+    // accepts audio, which takes the image cap).
+    const maxSize = detected.mime.startsWith('audio/')
+      ? 10 * 1024 * 1024
+      : getMaxSize(detected.mime);
+    if (body.length > maxSize) {
+      throw new Error('File is too large.');
     }
     const extension = detected.ext;
     const safeContentType = detected.mime;

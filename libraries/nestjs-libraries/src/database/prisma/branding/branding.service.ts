@@ -1,7 +1,7 @@
 import { HttpException, Injectable } from '@nestjs/common';
 import { BrandingRepository } from '@gitroom/nestjs-libraries/database/prisma/branding/branding.repository';
 import { EngagementService } from '@gitroom/nestjs-libraries/database/prisma/engagement/engagement.service';
-import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
+import { makeSecureId } from '@gitroom/nestjs-libraries/services/make.secure.id';
 
 export type PublicBranding = {
   portalName: string | null;
@@ -91,7 +91,7 @@ export class BrandingService {
     }
     const updated = await this._brandingRepository.setReportToken(
       customerId,
-      makeId(32)
+      makeSecureId(32)
     );
     return { token: updated.reportToken };
   }
@@ -100,7 +100,7 @@ export class BrandingService {
     await this.requireCustomer(organizationId, customerId);
     const updated = await this._brandingRepository.setReportToken(
       customerId,
-      makeId(32)
+      makeSecureId(32)
     );
     return { token: updated.reportToken };
   }

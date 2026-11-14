@@ -43,6 +43,42 @@ const BrandingComponent = () => {
   const [logoUrl, setLogoUrl] = useState('');
   const [accentColor, setAccentColor] = useState('');
   const [saving, setSaving] = useState(false);
+  const [logoUploading, setLogoUploading] = useState(false);
+
+  // Postorizon Phase 4 (6c): upload a logo through the same
+  // /media/upload-simple flow the capture page uses, as an alternative
+  // to pasting a URL — the returned path lands in the same logoUrl
+  // field and is saved by the normal Save button.
+  const uploadLogo = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      e.target.value = '';
+      if (!file) {
+        return;
+      }
+      setLogoUploading(true);
+      try {
+        const formData = new FormData();
+        formData.append('file', file);
+        const res = await fetch('/media/upload-simple', {
+          method: 'POST',
+          body: formData,
+        });
+        const data = res.ok ? await res.json().catch(() => null) : null;
+        if (data?.path) {
+          setLogoUrl(data.path);
+        } else {
+          toaster.show(
+            t('logo_upload_failed', 'Could not upload the logo'),
+            'warning'
+          );
+        }
+      } finally {
+        setLogoUploading(false);
+      }
+    },
+    [fetch, t, toaster]
+  );
 
   useEffect(() => {
     if (branding) {
@@ -159,6 +195,32 @@ const BrandingComponent = () => {
           placeholder="https://example.com/logo.png"
           disableForm={true}
         />
+        <div className="flex items-center gap-[12px]">
+          <label
+            className={`text-[13px] underline ${
+              logoUploading ? 'opacity-50 pointer-events-none' : 'cursor-pointer'
+            }`}
+          >
+            {logoUploading
+              ? t('uploading', 'Uploading…')
+              : t('upload_logo', 'or upload a logo')}
+            <input
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={uploadLogo}
+              disabled={logoUploading}
+            />
+          </label>
+          {!!logoUrl && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={logoUrl}
+              alt=""
+              className="h-[32px] max-w-[120px] object-contain"
+            />
+          )}
+        </div>
         <div className="flex items-end gap-[12px]">
           <div className="flex-1">
             <Input

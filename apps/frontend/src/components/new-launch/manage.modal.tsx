@@ -1288,7 +1288,16 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                 <div>{t('delete_post', 'Delete Post')}</div>
               </button>
             )}
-            {!dummy && <BestTimeChips onPick={setPickerDate} />}
+            {!dummy && (
+              <BestTimeChips
+                onPick={setPickerDate}
+                integrationId={
+                  selectedIntegrations.length === 1
+                    ? selectedIntegrations[0].integration.id
+                    : undefined
+                }
+              />
+            )}
             <DatePicker onChange={setPickerDate} date={pickerDate} />
             {!addEditSets && (
               <button
@@ -1482,7 +1491,18 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
             },
           }}
         >
-          <div className="mb-[12px]">{!dummy && <BestTimeChips onPick={setDateDraft} />}</div>
+          <div className="mb-[12px]">
+            {!dummy && (
+              <BestTimeChips
+                onPick={setDateDraft}
+                integrationId={
+                  selectedIntegrations.length === 1
+                    ? selectedIntegrations[0].integration.id
+                    : undefined
+                }
+              />
+            )}
+          </div>
           <DatePickerPanel
             date={dateDraft}
             onChange={setDateDraft}

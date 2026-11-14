@@ -54,6 +54,10 @@ export class AuthController {
     };
   }
 
+  // credential endpoints are brute-force targets; cap them per client
+  // IP like the Farcaster signer below (Phase 4 security audit)
+  @UseGuards(ThrottlerRealIpGuard)
+  @Throttle({ default: { limit: 30, ttl: 3600000 } })
   @Post('/register')
   async register(
     @Req() req: Request,
@@ -128,6 +132,8 @@ export class AuthController {
     }
   }
 
+  @UseGuards(ThrottlerRealIpGuard)
+  @Throttle({ default: { limit: 30, ttl: 3600000 } })
   @Post('/login')
   async login(
     @Req() req: Request,
@@ -192,6 +198,8 @@ export class AuthController {
     }
   }
 
+  @UseGuards(ThrottlerRealIpGuard)
+  @Throttle({ default: { limit: 30, ttl: 3600000 } })
   @Post('/forgot')
   async forgot(@Body() body: ForgotPasswordDto) {
     try {
@@ -206,6 +214,8 @@ export class AuthController {
     }
   }
 
+  @UseGuards(ThrottlerRealIpGuard)
+  @Throttle({ default: { limit: 30, ttl: 3600000 } })
   @Post('/forgot-return')
   async forgotReturn(@Body() body: ForgotReturnPasswordDto) {
     const reset = await this._authService.forgotReturn(body);

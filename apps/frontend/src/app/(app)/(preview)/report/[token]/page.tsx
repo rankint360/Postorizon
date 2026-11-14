@@ -142,6 +142,40 @@ export default async function Report(props: {
             {preset.label}
           </a>
         ))}
+        {/* Postorizon Phase 4: explicit custom range — the report API
+            has always accepted from/to; this plain GET form navigates
+            with them (this page is a server component, no client JS). */}
+        <form
+          method="get"
+          className="flex items-center gap-[6px] text-[13px]"
+        >
+          <label className="flex items-center gap-[4px]">
+            {t('report_from', 'From')}
+            <input
+              type="date"
+              name="from"
+              required
+              defaultValue={dayjs.utc(report.period.from).format('YYYY-MM-DD')}
+              className="bg-newBgColorInner border border-newBorder rounded-[8px] px-[8px] py-[5px]"
+            />
+          </label>
+          <label className="flex items-center gap-[4px]">
+            {t('report_to', 'To')}
+            <input
+              type="date"
+              name="to"
+              required
+              defaultValue={dayjs.utc(report.period.to).format('YYYY-MM-DD')}
+              className="bg-newBgColorInner border border-newBorder rounded-[8px] px-[8px] py-[5px]"
+            />
+          </label>
+          <button
+            type="submit"
+            className="bg-newBgColorInner border border-newBorder rounded-[8px] px-[12px] py-[6px]"
+          >
+            {t('report_apply_range', 'Apply range')}
+          </button>
+        </form>
       </div>
 
       <div className="grid grid-cols-2 minCustom:grid-cols-3 gap-[12px]">

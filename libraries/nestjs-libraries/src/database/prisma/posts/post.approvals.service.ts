@@ -1,7 +1,7 @@
 import { HttpException, Injectable } from '@nestjs/common';
 import { PostApprovalsRepository } from '@gitroom/nestjs-libraries/database/prisma/posts/post.approvals.repository';
 import { PostsService } from '@gitroom/nestjs-libraries/database/prisma/posts/posts.service';
-import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
+import { makeSecureId } from '@gitroom/nestjs-libraries/services/make.secure.id';
 import { ApprovalState, State } from '@prisma/client';
 
 /**
@@ -78,7 +78,7 @@ export class PostApprovalsService {
     comment?: string
   ) {
     const post = await this.requirePost(organizationId, postId);
-    const token = post.approvalToken || makeId(32);
+    const token = post.approvalToken || makeSecureId(32);
     const updated = await this._postApprovalsRepository.transition(
       postId,
       organizationId,
