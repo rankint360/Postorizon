@@ -11,7 +11,6 @@ services:
       POSTGRES_PASSWORD: postiz-local-pwd
       POSTGRES_USER: postiz-local
       POSTGRES_DB: postiz-db-local
-      TEMPORAL_ADDRESS: "temporal:7233"
     volumes:
       - postgres-volume:/var/lib/postgresql/data
     ports:
@@ -25,6 +24,13 @@ services:
     restart: always
     ports:
       - 6379:6379
+    volumes:
+      - postiz-redis-data:/data
+    healthcheck:
+      test: redis-cli ping
+      interval: 10s
+      timeout: 3s
+      retries: 3
     networks:
       - postiz-network
   postiz-pg-admin:
@@ -136,6 +142,8 @@ services:
 
 volumes:
   redisinsight:
+  postiz-redis-data:
+    external: false
   postgres-volume:
     external: false
 

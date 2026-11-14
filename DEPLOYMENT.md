@@ -7,16 +7,24 @@
 > a verification exercise: walk the smoke checklist (§8) and fix what it
 > finds before calling any environment "staging".
 
-> **⚠ Biggest caveat first (D2):** `docker-compose.yaml` as inherited from
-> upstream pulls `ghcr.io/gitroomhq/postiz-app:latest` — the **upstream
-> Postiz image, not Postorizon**. None of Phases 1–4 is in it. Before any
-> real deployment, make the release decision: publish a Postorizon image
-> (e.g. `ghcr.io/rankint360/postorizon`) built from this repo and point the
-> `postiz` service at it, or add a `build:` section. The repo's only app
-> Dockerfile is `Dockerfile.dev` (single-stage; builds the whole monorepo
-> and runs everything in one container). Its helper scripts have known
-> defects (D3/D4 below). This decision is the owner's — the runbook is
-> written for the compose stack once the image question is settled.
+> **Image decision (D2) — RESOLVED IN REPO (deployment-prep pass):**
+> `docker-compose.yaml` no longer pulls the upstream Postiz image. The
+> `postiz` service now **builds Postorizon's own image from this repo**
+> (`build: context: . / dockerfile: Dockerfile.dev`) and tags it
+> `ghcr.io/rankint360/postorizon:latest`. Exact commands:
+> `docker compose build postiz` (or standalone:
+> `docker build -f Dockerfile.dev -t ghcr.io/rankint360/postorizon:latest .`),
+> then optionally `docker push ghcr.io/rankint360/postorizon:latest` for
+> multi-host deploys; on a single host, `docker compose up -d` builds and
+> runs it in place. `Dockerfile.dev` is single-stage (builds the whole
+> monorepo, runs everything in one container) and was statically verified
+> against this codebase in the deployment-prep pass: Node 22.23.4 and
+> pnpm 10.6.1 match the root `packageManager`, the root `build`/`pm2`
+> scripts it invokes exist (as do all three apps' `pm2` scripts), the
+> nginx config it copies exists at `var/docker/nginx.conf`, and
+> `.dockerignore` keeps `node_modules`/`dist`/`.git` out of the build
+> context. No Dockerfile corrections were needed. The `var/docker` helper
+> scripts' known defects (D3/D4) are fixed — see §9.
 
 ---
 
@@ -35,7 +43,7 @@ Elasticsearch + UI). At container start, `pm2-run` applies the Prisma schema
 
 | Service | Image | Ports | Notes |
 |---|---|---|---|
-| `postiz` | `ghcr.io/gitroomhq/postiz-app:latest` ⚠ see D2 | `4007:5000` | The app (all processes). Volumes `postiz-config:/config/`, `postiz-uploads:/uploads/` |
+| `postiz` | **built from this repo** (`Dockerfile.dev`) → tagged `ghcr.io/rankint360/postorizon:latest` (D2 resolved) | `4007:5000` | The app (all processes). Volumes `postiz-config:/config/`, `postiz-uploads:/uploads/` |
 | `postiz-postgres` | `postgres:17-alpine` | — | App database; healthcheck `pg_isready` |
 | `postiz-redis` | `redis:7.2` | — | Queues/throttling; healthcheck `redis-cli ping` |
 | `temporal` | `temporalio/auto-setup:1.28.1` | `7233:7233` | Namespace `default`; dynamic config from `./dynamicconfig` |
@@ -80,11 +88,13 @@ does not crash); Prisma hard-requires `DATABASE_URL`.
 | `NEXT_PUBLIC_UPLOAD_STATIC_DIRECTORY` | `/uploads` — **note the `_STATIC_`**: the code reads only this name (the compose file previously set a non-existent `NEXT_PUBLIC_UPLOAD_DIRECTORY`; fixed Phase 4, F2) |
 | `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_ACCESS_KEY`, `CLOUDFLARE_SECRET_ACCESS_KEY`, `CLOUDFLARE_BUCKETNAME`, `CLOUDFLARE_BUCKET_URL`, `CLOUDFLARE_REGION` | Only when `STORAGE_PROVIDER=cloudflare`; all are asserted non-null in that mode. Present as comments in the compose file |
 
-### 3.3 Email — ⚠ not configured in compose (D1)
+### 3.3 Email — compose passthrough added with empty placeholders (D1, fixed)
 
-No email variable appears in `docker-compose.yaml`. With none set, the mail
+`docker-compose.yaml` now carries the full email variable set as **empty
+placeholders** (deployment-prep pass). Empty/unset still means the mail
 service uses `EmptyProvider`: **no email is ever sent and new accounts are
-auto-activated**. Add before any public staging:
+auto-activated**. The passthrough is wired; the *values* are owner-side —
+set a real provider before any public staging:
 
 | Var | Notes |
 |---|---|
@@ -121,6 +131,20 @@ One client id/secret pair per social channel, e.g. `X_API_KEY/X_API_SECRET`,
 The compose file pre-lists most of them as empty strings. Each provider is
 exercised only when its credentials are present. These come from the
 developer apps (see DEV_APPS.md) — most are still owner-pending.
+
+**Meta data-deletion callback (deployment-prep pass):** the backend now
+serves Meta's signed data-deletion callback at
+`POST /api/public/meta/data-deletion` (externally, on the app origin —
+e.g. `https://app.postorizon.com/api/public/meta/data-deletion`; enter
+that as the Data Deletion Request Callback URL in the Meta app). It
+verifies the `signed_request` HMAC with **`FACEBOOK_APP_SECRET`** — the
+same env var the Facebook provider reads, already in the compose
+environment above. With the secret unset the endpoint answers 500 and
+logs an error. Verified requests are logged (Meta user id + a
+deterministic confirmation code) and answered with the status URL
+`<MAIN_URL>/data-deletion?code=…`; there is deliberately no persisted
+deletion-request table (see the controller's header comment for the
+documented limitation).
 
 ### 3.6 Other feature env (optional)
 
@@ -193,8 +217,10 @@ with **Prisma db push**:
 
 ## 7. First-deploy sequence
 
-1. Settle the image question (D2) — point the `postiz` service at a
-   Postorizon build.
+1. Build the Postorizon image: `docker compose build postiz` (D2 is
+   resolved in the repo — the compose file builds `Dockerfile.dev` and no
+   longer pulls the upstream image). Optionally
+   `docker push ghcr.io/rankint360/postorizon:latest`.
 2. Copy `docker-compose.yaml`; replace `JWT_SECRET`, the Postgres password
    (both in `DATABASE_URL` and `postiz-postgres` env), and the public URLs
    (`MAIN_URL`, `FRONTEND_URL`, `NEXT_PUBLIC_BACKEND_URL`) with the real
@@ -231,32 +257,119 @@ checks below prove the *prerequisites* on a fresh deployment:
 | 11 | Temporal UI (:8080) shows `engagementSamplingWorkflow` and `missingPostWorkflow` running — proves `RUN_CRON` reached the apps | §5 |
 | 12 | Restart the `postiz` container: db-push is a no-op success, all three apps return, scheduled posts survive | operability |
 
-## 9. Known gaps (flagged in Phase 4, not fixed)
+## 9. Known gaps — status after the deployment-prep pass
 
-- **D1** — No email config in compose (see §3.3). Product decision, not a
-  mechanical fix.
-- **D2** — Compose deploys the upstream image (see the ⚠ at the top).
-  Release decision required.
-- **D3** — `var/docker/docker-build.sh` uses `docker build --target dist` /
-  `--target devcontainer`, but `Dockerfile.dev` defines no stages — the
-  script fails as written.
-- **D4** — `var/docker/docker-create.sh` publishes 3000/4200 (internal app
-  ports) instead of nginx's 5000.
-- **D5** — `docker-compose.dev.yaml` puts a `TEMPORAL_ADDRESS` on the
-  *postgres* service (inert; host-run apps read the root `.env`, where the
-  correct value is `localhost:7233`).
-- **D6** — `apps/commands` has no compose service, no root-build entry and
-  no pm2 script — orphaned for deployment; owner decision needed.
-- **D7** — The Temporal stack itself has no healthchecks; app→Temporal
-  ordering is start-only (F3). Temporal's auto-setup retries cover the
-  rest in practice.
-- **D8** — Dead vars in prod compose (set, never read by code): `FEE_AMOUNT`,
-  `STRIPE_SIGNING_KEY_CONNECT` (the code reads `STRIPE_SIGNING_KEY`),
-  `SLACK_SIGNING_SECRET` (code reads `SLACK_SECRET`). Harmless; left for
-  upstream parity.
-- **D9** — Parity nits: dev Postgres user differs from prod's; dev Redis
-  has no volume/healthcheck; `temporal-ui` CORS origin doesn't match the
-  app origin. Cosmetic.
+(Phase 4 flagged D1–D9; there is no D10. Statuses below are current.)
+
+- **D1 — FIXED (values owner-side).** Compose now passes the full email
+  variable set through with clearly-marked empty placeholders (§3.3).
+  Until the owner sets a real provider + credentials, mail stays
+  `EmptyProvider` and accounts auto-activate.
+- **D2 — RESOLVED IN REPO.** Compose builds Postorizon's own image from
+  `Dockerfile.dev` (see the note at the top). Nothing owner-side remains
+  except optionally pushing the image to the registry.
+- **D3 — FIXED.** `var/docker/docker-build.sh` rewritten for the
+  single-stage `Dockerfile.dev` (it previously passed `--target dist` /
+  `--target devcontainer`, stages that don't exist, and failed as
+  written).
+- **D4 — FIXED.** `var/docker/docker-create.sh` now publishes
+  `4007:5000` (nginx) instead of the internal 3000/4200.
+- **D5 — FIXED.** The inert `TEMPORAL_ADDRESS` was removed from the dev
+  compose *postgres* service (host-run apps read the root `.env`, where
+  the correct value is `localhost:7233`).
+- **D6 — RESOLVED BY DOCUMENTATION.** `apps/commands` is a one-shot CLI
+  (nestjs-command), not a service: it deliberately gets **no** compose
+  service, root-build entry or pm2 script. It is built and run manually
+  at deploy time — the exact commands are in §10 ("First-deploy
+  one-offs"), which is also where its Phase 5 backfill task belongs.
+- **D7 — OPEN (accepted).** The Temporal stack has no healthchecks;
+  app→Temporal ordering is start-only (F3). The `temporalio/auto-setup`
+  image ships no reliable in-image health probe to hang a healthcheck
+  on, and its startup retries cover the gap in practice. Revisit only
+  if Temporal is ever replaced by a managed/external deployment.
+- **D8 — REVIEWED, retained deliberately.** Dead vars in prod compose
+  (set, never read by code): `FEE_AMOUNT`, `STRIPE_SIGNING_KEY_CONNECT`
+  (the code reads `STRIPE_SIGNING_KEY`), `SLACK_SIGNING_SECRET` (code
+  reads `SLACK_SECRET`, which is present alongside). Harmless; kept for
+  upstream parity so future upstream merges stay clean.
+- **D9 — PARTIALLY FIXED.** Prod `temporal-ui` CORS origin now matches
+  the app origin (`http://localhost:4007`); dev Redis gained the
+  `/data` volume and `redis-cli ping` healthcheck it lacked, at parity
+  with prod. Left as-is, deliberately: the dev Postgres user differs
+  from prod's (aligning it would invalidate existing dev volumes;
+  cosmetic only), and the dev `temporal-ui` CORS origin (host-dev
+  origins vary by setup).
+
+## 10. First-deploy one-offs (run once, in this order, after first boot)
+
+These belong to the Phase 5 deploy specifically. None of them is
+automated — each is a deliberate, one-time operator action.
+
+### 10.1 Encrypt the stored channel tokens (Phase 5 backfill) — DO THIS
+
+Phase 5 encrypts integration tokens at rest, but lazily: a channel's
+tokens are re-stored encrypted on its next connect/refresh/page-save.
+Dormant channels stay plaintext until the one-off backfill sweeps them.
+Run it once after the first boot on Phase 5+ code (it is idempotent —
+re-runs are no-ops):
+
+```bash
+# inside the running app container (compose deployment):
+docker compose exec postiz sh -c "cd /app && pnpm --filter ./apps/commands run build && node ./apps/commands/dist/apps/command/src/main.js integrations:encrypt-tokens"
+# expected output: "Scanned N integrations, encrypted tokens on M"
+```
+
+(On a host checkout with a populated `.env`, run the same two commands
+from the repo root instead.) The task is the `nestjs-command` one-off
+`integrations:encrypt-tokens` (`apps/commands`, see D6). Until this has
+run, treat the database as still holding some plaintext channel
+credentials.
+
+### 10.2 Session cutover — OWNER'S DECISION (not done in code)
+
+Phase 5 gave session tokens a 30-day expiry and revocation, enforced by
+`AuthMiddleware` comparing the token's `sessionEpoch` claim against
+`User.sessionEpoch` (revocation hooks: `UsersRepository.updatePassword`
+and `POST /user/logout-all` → `UsersService.incrementSessionEpoch`).
+**Pre-Phase-5 tokens carry no `exp` and no epoch claim**, so they are
+treated as epoch 0 and keep working until the user resets their
+password, signs out everywhere, or the cookie dies (≤365 days).
+
+At cutover the owner picks one:
+
+- **(Recommended) One-time global epoch bump** — logs every user out
+  once; every live session afterwards is a Phase 5 (30-day) token:
+  ```bash
+  docker compose exec postiz-postgres psql -U postiz-user -d postiz-db-local \
+    -c 'UPDATE "User" SET "sessionEpoch" = "sessionEpoch" + 1;'
+  ```
+  (Table name verified against `schema.prisma`: model `User`, no
+  `@@map`.) Existing sessions fail the middleware check on their next
+  request and self-clear — no restart needed.
+- **Natural roll-off** — do nothing. Old tokens age out via the hooks
+  above; the last stragglers persist up to the 365-day cookie lifetime.
+  Acceptable for a fresh deployment with no pre-Phase-5 users (in which
+  case this whole item is moot).
+
+Deliberately NOT automated: forcing a global logout is the owner's
+call, per the Phase 5 report.
+
+### 10.3 Verify RUN_CRON actually reached the apps
+
+§8 check #11 covers the symptom; verify the cause directly on first
+boot, before trusting recurring sampling or token-expiry notifications:
+
+```bash
+docker compose exec postiz printenv RUN_CRON        # must print: true
+docker compose exec postiz curl -s localhost:3002/health/status   # orchestrator ↔ Temporal OK
+```
+
+Then confirm in the Temporal UI (:8080) that `engagementSamplingWorkflow`
+and `missingPostWorkflow` are running. If `RUN_CRON` is missing, neither
+register starts and nothing recurring ever runs — set it on the `postiz`
+service (it is in the compose file since Phase 4's F1) and restart; the
+registers use fixed workflow ids, so a later start is clean and
+duplicate-safe.
 
 ## Appendix — Phase 4 compose fixes (already applied)
 

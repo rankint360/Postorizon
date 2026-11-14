@@ -1,6 +1,15 @@
 services:
   postiz:
-    image: ghcr.io/gitroomhq/postiz-app:latest
+    # Postorizon builds its OWN image from this repo (deployment gap D2,
+    # resolved — the inherited file pulled the upstream Postiz image, which
+    # contains none of Postorizon's code). The `image:` name tags the
+    # locally built result so it can be pushed to the registry unchanged:
+    #   docker compose build postiz
+    #   docker push ghcr.io/rankint360/postorizon:latest
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    image: ghcr.io/rankint360/postorizon:latest
     container_name: postiz
     restart: always
     environment:
@@ -30,6 +39,25 @@ services:
       # CLOUDFLARE_BUCKETNAME: 'your-bucket-name'
       # CLOUDFLARE_BUCKET_URL: 'https://your-bucket-url.r2.cloudflarestorage.com/'
       # CLOUDFLARE_REGION: 'auto'
+
+      # === Email Settings (gap D1)
+      # EMAIL_PROVIDER selects the mail provider in code ('resend' |
+      # 'nodemailer' | 'ses'; anything else — including empty — selects
+      # EmptyProvider). With EmptyProvider NO email is ever sent and new
+      # accounts are AUTO-ACTIVATED. Fill in a real provider + credentials
+      # before any public staging; the values themselves are owner-side.
+      EMAIL_PROVIDER: ''
+      EMAIL_FROM_ADDRESS: ''
+      EMAIL_FROM_NAME: ''
+      RESEND_API_KEY: ''
+      # EMAIL_HOST: ''
+      # EMAIL_PORT: ''
+      # EMAIL_SECURE: ''
+      # EMAIL_USER: ''
+      # EMAIL_PASS: ''
+      # SES_REGION: ''
+      # SES_ACCESS_KEY: ''
+      # SES_SECRET_ACCESS_KEY: ''
 
       # === Social Media API Settings
       X_URL: ''
@@ -255,7 +283,7 @@ services:
     image: temporalio/ui:2.34.0
     environment:
       - TEMPORAL_ADDRESS=temporal:7233
-      - TEMPORAL_CORS_ORIGINS=http://127.0.0.1:3000
+      - TEMPORAL_CORS_ORIGINS=http://localhost:4007
     networks:
       - temporal-network
     ports:

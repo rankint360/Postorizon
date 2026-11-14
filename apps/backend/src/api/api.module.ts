@@ -47,6 +47,7 @@ import { ThirdPartyController } from '@gitroom/backend/api/routes/third-party.co
 import { MonitorController } from '@gitroom/backend/api/routes/monitor.controller';
 import { NoAuthIntegrationsController } from '@gitroom/backend/api/routes/no.auth.integrations.controller';
 import { PublicPostApprovalsController } from '@gitroom/backend/api/routes/public.post.approvals.controller';
+import { PublicMetaDataDeletionController } from '@gitroom/backend/api/routes/public.meta.data.deletion.controller';
 import { EnterpriseController } from '@gitroom/backend/api/routes/enterprise.controller';
 import { OAuthAppController } from '@gitroom/backend/api/routes/oauth-app.controller';
 import { ApprovedAppsController } from '@gitroom/backend/api/routes/approved-apps.controller';
@@ -113,6 +114,7 @@ const authenticatedController = [
         NoAuthIntegrationsController,
         PublicPostApprovalsController,
         PublicClientReportController,
+        PublicMetaDataDeletionController,
         OAuthController,
         MediaWidgetController,
         ClippingWidgetController,

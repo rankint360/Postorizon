@@ -63,14 +63,18 @@ export class YoutubeProvider extends SocialAbstract implements SocialProvider {
   name = 'YouTube';
   isBetweenSteps = true;
   dto = YoutubeSettingsDto;
+  // Least-privilege scope set (DEVELOPER_APPS_PACK.md §7 recommendation):
+  // the broad `youtube` umbrella scope and `youtubepartner` (Content ID /
+  // partner operations — not used at launch) were removed. Everything the
+  // provider does — upload, read channel/videos, comments over SSL,
+  // analytics — is covered by the scopes below. NOT live-verified: a real
+  // Google account must re-connect and re-test before submission.
   scopes = [
     'https://www.googleapis.com/auth/userinfo.profile',
     'https://www.googleapis.com/auth/userinfo.email',
-    'https://www.googleapis.com/auth/youtube',
     'https://www.googleapis.com/auth/youtube.force-ssl',
     'https://www.googleapis.com/auth/youtube.readonly',
     'https://www.googleapis.com/auth/youtube.upload',
-    'https://www.googleapis.com/auth/youtubepartner',
     'https://www.googleapis.com/auth/yt-analytics.readonly',
   ];
 
