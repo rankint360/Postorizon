@@ -35,6 +35,7 @@ model Organization {
   plugs               Plugs[]
   post                Post[]               @relation("organization")
   submittedPost       Post[]               @relation("submittedForOrg")
+  postApprovals       PostApproval[]
   sets                Sets[]
   signatures          Signatures[]
   subscription        Subscription?
@@ -475,6 +476,8 @@ model Post {
   image                      String?
   submittedForOrderId        String?
   submittedForOrganizationId String?
+  approvalState              ApprovalState             @default(NOT_REQUIRED)
+  approvalToken              String?                   @unique
   approvedSubmitForOrder     APPROVED_SUBMIT_FOR_ORDER @default(NO)
   creationMethod             CreationMethod            @default(UNKNOWN)
   lastMessageId              String?
@@ -493,6 +496,7 @@ model Post {
   childrenPost               Post[]                    @relation("parentPostId")
   submittedForOrder          Orders?                   @relation(fields: [submittedForOrderId], references: [id])
   submittedForOrganization   Organization?             @relation("submittedForOrg", fields: [submittedForOrganizationId], references: [id])
+  approvals                  PostApproval[]
   tags                       TagsPosts[]
 
   @@index([group])
@@ -507,12 +511,33 @@ model Post {
   @@index([submittedForOrderId])
   @@index([intervalInDays])
   @@index([approvedSubmitForOrder])
+  @@index([approvalState])
   @@index([creationMethod])
   @@index([lastMessageId])
   @@index([createdAt])
   @@index([updatedAt])
   @@index([releaseURL])
   @@index([integrationId])
+}
+
+// Postorizon Phase 1: audit trail for the approval workflow. Every state
+// transition of Post.approvalState writes one row; viaLink marks actions
+// taken through the shareable client approval link (no login).
+model PostApproval {
+  id             String        @id @default(uuid())
+  postId         String
+  organizationId String
+  state          ApprovalState
+  comment        String?
+  userId         String?
+  viaLink        Boolean       @default(false)
+  createdAt      DateTime      @default(now())
+  post           Post          @relation(fields: [postId], references: [id])
+  organization   Organization  @relation(fields: [organizationId], references: [id])
+
+  @@index([postId])
+  @@index([organizationId])
+  @@index([createdAt])
 }
 
 model Notifications {
@@ -1780,6 +1805,15 @@ enum State {
   PUBLISHED
   ERROR
   DRAFT
+}
+
+// Postorizon Phase 1: native approval workflow state for a Post.
+// NOT_REQUIRED is the inherited behaviour (posts publish without approval).
+enum ApprovalState {
+  NOT_REQUIRED
+  PENDING
+  APPROVED
+  CHANGES_REQUESTED
 }
 
 enum SubscriptionTier {

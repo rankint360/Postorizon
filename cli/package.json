@@ -1,0 +1,1 @@
+{"bin":{"postorizon":"./bin/postorizon.js"},"description":"Postorizon command-line client for the public API (posts:create, posts:list).","engines":{"node":">=18"},"license":"AGPL-3.0","name":"postorizon-cli","private":true,"type":"commonjs","version":"0.1.0"}

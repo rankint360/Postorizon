@@ -1,33 +1,33 @@
 :root {
   .dark {
     --new-back-drop: #000;
-    --new-settings: #242323;
-    --new-border: #252525;
-    --new-bgColor: #0e0e0e;
-    --new-bgColorInner: #1a1919;
-    --new-sep: #454444;
-    --new-bgLineColor: #212121;
-    --new-textItemFocused: #1a1919;
-    --new-textItemBlur: #999999;
-    --new-boxFocused: #fff;
-    --new-textColor: 255 255 255;
-    --new-blockSeparator: #272626;
-    --new-btn-simple: #313030;
-    --new-btn-text: #ffffff;
-    --new-btn-primary: #612bd3;
-    --new-ai-btn: #d82d7e;
-    --new-box-hover: #201f1f;
-    --new-table-border: #2b2b2b;
-    --new-table-header: #1e1d1d;
-    --new-table-text: #9c9c9c;
-    --new-table-text-focused: #fc69ff;
-    --new-small-strips: #191818;
-    --new-big-strips: #161515;
-    --new-col-color: #2c2b2b;
-    --new-menu-dots: #696868;
-    --new-menu-hover: #fff;
+    --new-settings: #1D2237;
+    --new-border: rgba(244, 241, 234, 0.09);
+    --new-bgColor: #0B0E1A;
+    --new-bgColorInner: #141828;
+    --new-sep: #1D2237;
+    --new-bgLineColor: #141828;
+    --new-textItemFocused: #1D2237;
+    --new-textItemBlur: #9BA1B8;
+    --new-boxFocused: #F4F1EA;
+    --new-textColor: 244 241 234;
+    --new-blockSeparator: #1D2237;
+    --new-btn-simple: #1D2237;
+    --new-btn-text: #F4F1EA;
+    --new-btn-primary: #FF5A3C;
+    --new-ai-btn: #7A5AF8;
+    --new-box-hover: #1D2237;
+    --new-table-border: rgba(244, 241, 234, 0.09);
+    --new-table-header: #141828;
+    --new-table-text: #9BA1B8;
+    --new-table-text-focused: #FF5A3C;
+    --new-small-strips: #0B0E1A;
+    --new-big-strips: #0B0E1A;
+    --new-col-color: #1D2237;
+    --new-menu-dots: #9BA1B8;
+    --new-menu-hover: #F4F1EA;
     --menu-shadow: 0 8px 30px 0 rgba(0, 0, 0, 0.5);
-    --popup-color: rgba(65, 64, 66, 0.3);
+    --popup-color: rgba(11, 14, 26, 0.5);
     --border-preview: transparent;
     --preview-box-shadow: none;
     --linkedin-border: #2e3438;
@@ -44,43 +44,43 @@
     --youtube-svg-border: #A0A0A0;
   }
   .light {
-    --new-back-drop: #2d1b57;
-    --new-settings: #eceef1;
-    --new-sep: #d5d9dd;
-    --new-border: #eaecee;
-    --new-bgColor: #f0f2f4;
+    --new-back-drop: #0B0E1A;
+    --new-settings: #FFFFFF;
+    --new-sep: rgba(11, 14, 26, 0.09);
+    --new-border: rgba(11, 14, 26, 0.09);
+    --new-bgColor: #FAF6F0;
     --new-bgColorInner: #ffffff;
-    --new-bgLineColor: #e7e9eb;
-    --new-textItemFocused: #3900b2;
-    --new-textItemBlur: #777b7f;
-    --new-boxFocused: #ebe8ff;
-    --new-textColor: 14 14 14;
-    --new-blockSeparator: #f2f2f4;
-    --new-btn-simple: #eceef1;
-    --new-btn-text: #0e0e0e;
-    --new-btn-primary: #612bd3;
-    --new-ai-btn: #d82d7e;
-    --new-box-hover: #f4f6f8;
-    --new-table-border: #e7e9eb;
-    --new-table-header: #f5f7f9;
-    --new-table-text: #777b7f;
-    --new-table-text-focused: #fc69ff;
-    --new-small-strips: #191818;
-    --new-big-strips: #f5f7f9;
-    --new-col-color: #eff1f3;
-    --new-menu-dots: #696868;
-    --new-menu-hover: #000;
-    --menu-shadow: -22px 83px 24px 0 rgba(55, 52, 75, 0),
-      -14px 53px 22px 0 rgba(55, 52, 75, 0.01),
-      -8px 30px 19px 0 rgba(55, 52, 75, 0.05),
-      -3px 13px 14px 0 rgba(55, 52, 75, 0.09),
-      -1px 3px 8px 0 rgba(55, 52, 75, 0.1);
-    --popup-color: rgba(55, 37, 97, 0.2);
-    --border-preview: #f1f0f3;
-    --preview-box-shadow: 0 386px 108px 0 rgba(38, 32, 64, 0),
-      0 247px 99px 0 rgba(38, 32, 64, 0.01),
-      0 139px 83px 0 rgba(38, 32, 64, 0.03),
-      0 62px 62px 0 rgba(38, 32, 64, 0.04), 0 15px 34px 0 rgba(38, 32, 64, 0.05);
+    --new-bgLineColor: #FAF6F0;
+    --new-textItemFocused: #FF5A3C;
+    --new-textItemBlur: #5A6076;
+    --new-boxFocused: rgba(255, 90, 60, 0.12);
+    --new-textColor: 20 24 40;
+    --new-blockSeparator: rgba(11, 14, 26, 0.09);
+    --new-btn-simple: #FFFFFF;
+    --new-btn-text: #141828;
+    --new-btn-primary: #FF5A3C;
+    --new-ai-btn: #7A5AF8;
+    --new-box-hover: #FAF6F0;
+    --new-table-border: rgba(11, 14, 26, 0.09);
+    --new-table-header: #FFFFFF;
+    --new-table-text: #5A6076;
+    --new-table-text-focused: #FF5A3C;
+    --new-small-strips: #141828;
+    --new-big-strips: #FFFFFF;
+    --new-col-color: #FFFFFF;
+    --new-menu-dots: #5A6076;
+    --new-menu-hover: #141828;
+    --menu-shadow: -22px 83px 24px 0 rgba(11, 14, 26, 0),
+      -14px 53px 22px 0 rgba(11, 14, 26, 0.01),
+      -8px 30px 19px 0 rgba(11, 14, 26, 0.05),
+      -3px 13px 14px 0 rgba(11, 14, 26, 0.09),
+      -1px 3px 8px 0 rgba(11, 14, 26, 0.1);
+    --popup-color: rgba(11, 14, 26, 0.2);
+    --border-preview: rgba(11, 14, 26, 0.09);
+    --preview-box-shadow: 0 386px 108px 0 rgba(11, 14, 26, 0),
+      0 247px 99px 0 rgba(11, 14, 26, 0.01),
+      0 139px 83px 0 rgba(11, 14, 26, 0.03),
+      0 62px 62px 0 rgba(11, 14, 26, 0.04), 0 15px 34px 0 rgba(11, 14, 26, 0.05);
     --linkedin-border: #e9e5df;
     --linkedin-bg: #fff;
     --linkedin-text: #707070;
@@ -98,15 +98,15 @@
 
 :root {
   .dark {
-    --color-primary: #0e0e0e;
-    --color-secondary: #090b13;
-    --color-text: #ffffff;
-    --color-third: #080b13;
-    --color-forth: #612ad5;
+    --color-primary: #0B0E1A;
+    --color-secondary: #0B0E1A;
+    --color-text: #F4F1EA;
+    --color-third: #141828;
+    --color-forth: #FF5A3C;
     --color-fifth: var(--new-bgLineColor);
     --color-sixth: var(--new-table-header);
-    --color-seventh: #7236f1;
-    --color-gray: #8c8c8c;
+    --color-seventh: #7A5AF8;
+    --color-gray: #9BA1B8;
     --color-input: var(--new-table-header);
     --color-input-text: #64748b;
     --color-table-border: var(--new-table-border);
@@ -168,15 +168,15 @@
     --color-modalCustom: #000000;
   }
   .light {
-    --color-primary: #f0f2f4;
+    --color-primary: #FAF6F0;
     --color-secondary: #fff;
-    --color-text: #000;
+    --color-text: #141828;
     --color-third: white;
-    --color-forth: #612ad5;
+    --color-forth: #FF5A3C;
     --color-fifth: var(--new-bgLineColor);
     --color-sixth: var(--new-table-header);
-    --color-seventh: #7236f1;
-    --color-gray: #8c8c8c;
+    --color-seventh: #7A5AF8;
+    --color-gray: #5A6076;
     --color-input: var(--new-table-header);
     --color-input-text: #64748b;
     --color-table-border: #efefef;

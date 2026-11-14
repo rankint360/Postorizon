@@ -371,7 +371,7 @@ export class NoAuthIntegrationsController {
   }
 
   // The page of a connect link (POST /public/v1/integrations/connect), the
-  // person who opens it may have no Postiz account
+  // person who opens it may have no Postorizon account
   @Get('/public/connect/:token')
   getConnectLink(@Param('token') token: string) {
     return this._integrationService.getConnectLink(token);
@@ -402,7 +402,7 @@ export class NoAuthIntegrationsController {
     );
     if (!ability.can(AuthorizationActions.Create, Sections.CHANNEL)) {
       throw new HttpException(
-        'This Postiz workspace reached the channel limit of its plan, it has to be upgraded before another channel can be added',
+        'This Postorizon workspace reached the channel limit of its plan, it has to be upgraded before another channel can be added',
         400
       );
     }

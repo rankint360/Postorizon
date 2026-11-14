@@ -154,7 +154,7 @@ export const ConnectLink: FC<{ token: string }> = ({ token }) => {
             <div className="relative w-[72px] h-[72px] rounded-[18px] bg-[#0B0A0A] border-[2px] border-white/20 shadow-[0_8px_24px_rgba(0,0,0,0.45)] flex items-center justify-center">
               <img
                 src="/postorizon-mark.svg"
-                alt="Postiz"
+                alt="Postorizon"
                 className="w-[40px] h-[44px]"
               />
             </div>
@@ -187,7 +187,7 @@ export const ConnectLink: FC<{ token: string }> = ({ token }) => {
             <h1 className="text-[24px] leading-[32px] font-semibold text-center">
               {t(
                 'connect_link_title',
-                'Postiz wants to connect to your {{platform}}',
+                'Postorizon wants to connect to your {{platform}}',
                 values
               )}
             </h1>
@@ -208,7 +208,7 @@ export const ConnectLink: FC<{ token: string }> = ({ token }) => {
               >
                 {t(
                   'connect_link_automate',
-                  'Postiz will automate your {{platform}} account: it can schedule and publish posts on your behalf',
+                  'Postorizon will automate your {{platform}} account: it can schedule and publish posts on your behalf',
                   values
                 )}
               </Row>
@@ -223,7 +223,7 @@ export const ConnectLink: FC<{ token: string }> = ({ token }) => {
               >
                 {t(
                   'connect_link_system',
-                  'Everything goes through the Postiz system: your account is added to a Postiz workspace and managed from there'
+                  'Everything goes through the Postorizon system: your account is added to a Postorizon workspace and managed from there'
                 )}
               </Row>
               {!!data.redirectTo && (
@@ -238,7 +238,7 @@ export const ConnectLink: FC<{ token: string }> = ({ token }) => {
                 >
                   {t(
                     'connect_link_redirect',
-                    'When you are done you will be sent to {{site}}, a website outside of Postiz',
+                    'When you are done you will be sent to {{site}}, a website outside of Postorizon',
                     values
                   )}
                 </Row>
