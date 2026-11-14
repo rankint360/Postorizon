@@ -2,6 +2,7 @@ import { HttpException, Injectable } from '@nestjs/common';
 import dayjs from 'dayjs';
 import isoWeek from 'dayjs/plugin/isoWeek';
 import { WeeklyPlanRepository } from '@gitroom/nestjs-libraries/database/prisma/agent/weekly.plan.repository';
+import { EngagementService } from '@gitroom/nestjs-libraries/database/prisma/engagement/engagement.service';
 import { BrandVoiceService } from '@gitroom/nestjs-libraries/database/prisma/ai/brand.voice.service';
 import { AiChatService } from '@gitroom/nestjs-libraries/database/prisma/ai/ai.chat.service';
 import { PostsService } from '@gitroom/nestjs-libraries/database/prisma/posts/posts.service';
@@ -19,6 +20,8 @@ export type WeeklyPlanResult = {
   droppedBannedTopic: number;
   droppedOverCap: number;
   historyPostsUsed: number;
+  /** Phase 3: sampled posts behind the performance summary (0 = none). */
+  performancePostsUsed: number;
 };
 
 /**
@@ -33,11 +36,12 @@ export type WeeklyPlanResult = {
  * (approvalState PENDING) via PostApprovalsService.requestApproval.
  * Nothing the agent writes can publish without a human approval.
  *
- * V1 LIMITATION (by design, see PHASE1_REPORT.md): engagement analytics
- * are fetched live per provider and never persisted, so the "loop" is
- * closed on content history + brand voice only. Learning from post
- * performance awaits an engagement-persistence design; until then no
- * performance claims are made anywhere in this flow.
+ * Phase 3 — the loop is closed: when engagement snapshots exist for the
+ * group (Phase 3 Item 1, PostEngagementSnapshot), a performance summary
+ * built from them — the group's top posts by measured engagement, its
+ * average engagement, and its best weekday/hour slots — is added to the
+ * generation context alongside content history + brand voice. When no
+ * snapshots exist yet, behaviour is exactly the Phase 2 behaviour.
  */
 @Injectable()
 export class WeeklyPlanService {
@@ -46,7 +50,8 @@ export class WeeklyPlanService {
     private _brandVoiceService: BrandVoiceService,
     private _aiChatService: AiChatService,
     private _postsService: PostsService,
-    private _postApprovalsService: PostApprovalsService
+    private _postApprovalsService: PostApprovalsService,
+    private _engagementService: EngagementService
   ) {}
 
   async generateWeeklyPlan(
@@ -76,6 +81,35 @@ export class WeeklyPlanService {
       organizationId,
       dto.customerId
     );
+
+    // Phase 3 feedback loop: measured performance of this group's own
+    // posts, from persisted engagement snapshots. Null when nothing has
+    // been sampled yet — the prompt then stays exactly as Phase 2 built
+    // it (content history + brand voice only).
+    const performance = await this._engagementService.getPerformanceSummary(
+      organizationId,
+      dto.customerId
+    );
+    const performanceText = performance
+      ? [
+          `Measured performance of this brand's recent posts (from ${performance.postsSampled} sampled posts, average engagement ${performance.avgEngagement}):`,
+          'Top-performing posts (lean into these topics and formats, do not copy them):',
+          ...performance.topPosts.map(
+            (p) =>
+              `- (${p.providerIdentifier}, engagement ${p.engagement}) ${p.excerpt}`
+          ),
+          ...(performance.bestSlots.length
+            ? [
+                `Best posting times so far: ${performance.bestSlots
+                  .map(
+                    (s) =>
+                      `${['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][s.weekday]} ${String(s.hour).padStart(2, '0')}:00 (avg engagement ${s.avgEngagement})`
+                  )
+                  .join('; ')}.`,
+              ]
+            : []),
+        ].join('\n')
+      : '';
 
     const postsCount = dto.postsCount || 5;
     const maxPostsPerDay = dto.maxPostsPerDay || 3;
@@ -115,6 +149,7 @@ export class WeeklyPlanService {
             historyText
               ? `Recent published posts from this brand (use them for topic and style continuity, do not repeat them):\n${historyText}`
               : 'This brand has no published posts yet — this is its first week.',
+            ...(performanceText ? [performanceText] : []),
             `Write ${postsCount} posts for the coming week.`,
           ].join('\n\n'),
         },
@@ -223,6 +258,7 @@ export class WeeklyPlanService {
       droppedBannedTopic,
       droppedOverCap,
       historyPostsUsed: history.length,
+      performancePostsUsed: performance?.postsSampled || 0,
     };
   }
 

@@ -15,7 +15,9 @@ import { useT } from '@gitroom/react/translation/get.transation.service.client';
 export const ApprovalActions: FC<{
   token: string;
   approvalState: string;
-}> = ({ token, approvalState: initialState }) => {
+  /** Phase 3 white-label: the agency's accent colour, when set. */
+  accentColor?: string | null;
+}> = ({ token, approvalState: initialState, accentColor }) => {
   const t = useT();
   const fetch = useFetch();
   const toaster = useToaster();
@@ -90,6 +92,9 @@ export const ApprovalActions: FC<{
           onClick={() => act('approve')}
           disabled={busy}
           className="flex-1"
+          {...(accentColor
+            ? { style: { backgroundColor: accentColor } }
+            : {})}
         >
           {t('approval_approve', 'Approve')}
         </Button>

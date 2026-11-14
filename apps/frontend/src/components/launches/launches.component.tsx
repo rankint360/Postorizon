@@ -31,6 +31,7 @@ import { useVariables } from '@gitroom/react/helpers/variable.context';
 import { NewPost } from '@gitroom/frontend/components/launches/new.post';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { useIntegrationList } from '@gitroom/frontend/components/launches/helpers/use.integration.list';
+import { ChannelHealthBadge } from '@gitroom/frontend/components/launches/channel.health.badge';
 import useCookie from 'react-use-cookie';
 import { Onboarding } from '@gitroom/frontend/components/onboarding/onboarding';
 import { ChannelsAfterPayment } from '@gitroom/frontend/components/layout/check.payment';
@@ -453,6 +454,7 @@ export const MenuComponent: FC<
       >
         {integration.name}
       </div>
+      <ChannelHealthBadge integrationId={integration.id} />
       <Menu
         canChangeProfilePicture={integration.changeProfilePicture}
         canChangeNickName={integration.changeNickName}

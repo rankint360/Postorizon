@@ -9,6 +9,7 @@ import {
 import { ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { PostApprovalsService } from '@gitroom/nestjs-libraries/database/prisma/posts/post.approvals.service';
+import { BrandingService } from '@gitroom/nestjs-libraries/database/prisma/branding/branding.service';
 import { PostApprovalActionDto } from '@gitroom/nestjs-libraries/dtos/posts/post.approval.dto';
 import { ThrottlerRealIpGuard } from '@gitroom/nestjs-libraries/throttler/throttler.provider';
 
@@ -27,11 +28,19 @@ import { ThrottlerRealIpGuard } from '@gitroom/nestjs-libraries/throttler/thrott
 @UseGuards(ThrottlerRealIpGuard)
 @Throttle({ default: { limit: 60, ttl: 3600000 } })
 export class PublicPostApprovalsController {
-  constructor(private _postApprovalsService: PostApprovalsService) {}
+  constructor(
+    private _postApprovalsService: PostApprovalsService,
+    private _brandingService: BrandingService
+  ) {}
 
   @Get('/:token')
   async getLinkPost(@Param('token') token: string) {
     const post = await this._postApprovalsService.getLinkPost(token);
+    // Phase 3 white-label: the branding of the post's organization
+    // (safe display fields only — never the org id itself).
+    const branding = await this._brandingService.getBranding(
+      post.organizationId
+    );
     // only the fields the client approval page renders — never the org id
     // or anything beyond the post itself
     return {
@@ -40,6 +49,7 @@ export class PublicPostApprovalsController {
       state: post.state,
       publishDate: post.publishDate,
       approvalState: post.approvalState,
+      branding,
       integration: post.integration
         ? {
             name: post.integration.name,

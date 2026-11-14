@@ -6,11 +6,10 @@ import { Injectable } from '@nestjs/common';
  * (MVP_SPEC §3.2.2): the customer group's channels, its published-post
  * history, and per-day posting load.
  *
- * Note on history: engagement metrics are NOT persisted in this codebase
- * (Phase 1 finding — providers are queried live for analytics), so the
- * agent's "what worked" input is the published content itself, not
- * performance numbers. The feedback loop closes only once an engagement
- * persistence layer exists.
+ * Note on history: this repository serves the published CONTENT. The
+ * measured-performance input ("what worked", by the numbers) comes from
+ * the Phase 3 engagement snapshots via EngagementService — see
+ * WeeklyPlanService.
  */
 @Injectable()
 export class WeeklyPlanRepository {

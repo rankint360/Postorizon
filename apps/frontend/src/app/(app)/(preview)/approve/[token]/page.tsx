@@ -39,11 +39,31 @@ export default async function Approve(props: {
     );
   }
 
+  const branding = post.branding || null;
+
   return (
     <div className="mx-auto w-full max-w-[900px] p-[12px] flex flex-col gap-[12px] text-newTextColor">
-      <div className="flex bg-newBgColorInner rounded-[12px] min-h-[80px] px-[20px] py-[12px] items-center gap-[20px] flex-wrap">
-        <div className="text-[20px] font-semibold">
-          {t('approval_page_title', 'Review this post')}
+      <div
+        className="flex bg-newBgColorInner rounded-[12px] min-h-[80px] px-[20px] py-[12px] items-center gap-[20px] flex-wrap"
+        {...(branding?.accentColor
+          ? { style: { borderTop: `4px solid ${branding.accentColor}` } }
+          : {})}
+      >
+        {!!branding?.logoUrl && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={branding.logoUrl}
+            alt={branding.portalName || ''}
+            className="h-[40px] max-w-[180px] object-contain"
+          />
+        )}
+        <div className="flex flex-col">
+          <div className="text-[20px] font-semibold">
+            {t('approval_page_title', 'Review this post')}
+          </div>
+          {!!branding?.portalName && (
+            <div className="text-[13px] opacity-70">{branding.portalName}</div>
+          )}
         </div>
         {post.integration && (
           <div className="flex items-center gap-[8px] text-[14px]">
@@ -67,7 +87,11 @@ export default async function Approve(props: {
         <PostContentClient postId={post.id} html={sanitizePostContent(post.content)} />
       </div>
 
-      <ApprovalActions token={token} approvalState={post.approvalState} />
+      <ApprovalActions
+        token={token}
+        approvalState={post.approvalState}
+        accentColor={branding?.accentColor}
+      />
     </div>
   );
 }

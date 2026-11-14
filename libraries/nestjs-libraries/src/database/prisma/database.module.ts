@@ -8,6 +8,7 @@ import { SubscriptionService } from '@gitroom/nestjs-libraries/database/prisma/s
 import { SubscriptionRepository } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/subscription.repository';
 import { NotificationService } from '@gitroom/nestjs-libraries/database/prisma/notifications/notification.service';
 import { IntegrationService } from '@gitroom/nestjs-libraries/database/prisma/integrations/integration.service';
+import { IntegrationHealthService } from '@gitroom/nestjs-libraries/database/prisma/integrations/integration.health.service';
 import { IntegrationRepository } from '@gitroom/nestjs-libraries/database/prisma/integrations/integration.repository';
 import { PostsService } from '@gitroom/nestjs-libraries/database/prisma/posts/posts.service';
 import { PostsRepository } from '@gitroom/nestjs-libraries/database/prisma/posts/posts.repository';
@@ -22,6 +23,10 @@ import { InboxRepository } from '@gitroom/nestjs-libraries/database/prisma/inbox
 import { InboxService } from '@gitroom/nestjs-libraries/database/prisma/inbox/inbox.service';
 import { WeeklyPlanRepository } from '@gitroom/nestjs-libraries/database/prisma/agent/weekly.plan.repository';
 import { WeeklyPlanService } from '@gitroom/nestjs-libraries/database/prisma/agent/weekly.plan.service';
+import { EngagementRepository } from '@gitroom/nestjs-libraries/database/prisma/engagement/engagement.repository';
+import { EngagementService } from '@gitroom/nestjs-libraries/database/prisma/engagement/engagement.service';
+import { BrandingRepository } from '@gitroom/nestjs-libraries/database/prisma/branding/branding.repository';
+import { BrandingService } from '@gitroom/nestjs-libraries/database/prisma/branding/branding.service';
 import { IntegrationManager } from '@gitroom/nestjs-libraries/integrations/integration.manager';
 import { MediaService } from '@gitroom/nestjs-libraries/database/prisma/media/media.service';
 import { MediaRepository } from '@gitroom/nestjs-libraries/database/prisma/media/media.repository';
@@ -84,6 +89,7 @@ import { AdminStatsService } from '@gitroom/nestjs-libraries/database/prisma/adm
     WebhooksRepository,
     WebhooksService,
     IntegrationService,
+    IntegrationHealthService,
     IntegrationRepository,
     PostsService,
     PostsRepository,
@@ -98,6 +104,10 @@ import { AdminStatsService } from '@gitroom/nestjs-libraries/database/prisma/adm
     InboxService,
     WeeklyPlanRepository,
     WeeklyPlanService,
+    EngagementRepository,
+    EngagementService,
+    BrandingRepository,
+    BrandingService,
     StripeService,
     PaymentService,
     PaymentProviderManager,

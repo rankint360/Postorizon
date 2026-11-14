@@ -11,6 +11,7 @@ import {
 } from '@gitroom/frontend/components/ui/platform.icon.component';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { RenderAnalytics } from '@gitroom/frontend/components/platform-analytics/render.analytics';
+import { RecommendationsComponent } from '@gitroom/frontend/components/platform-analytics/recommendations.component';
 import { Select } from '@gitroom/react/form/select';
 import { Button } from '@gitroom/react/form/button';
 import { useRouter } from 'next/navigation';
@@ -330,6 +331,7 @@ export const PlatformAnalytics = () => {
             </div>
           </div>
         )}
+        <RecommendationsComponent />
       </div>
     </>
   );

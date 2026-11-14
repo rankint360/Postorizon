@@ -30,6 +30,7 @@ import {
   DatePicker,
   DatePickerPanel,
 } from '@gitroom/frontend/components/launches/helpers/date.picker';
+import { BestTimeChips } from '@gitroom/frontend/components/new-launch/best.time.chips';
 import { useShallow } from 'zustand/react/shallow';
 import { RepeatComponent } from '@gitroom/frontend/components/launches/repeat.component';
 import {
@@ -1287,6 +1288,7 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
                 <div>{t('delete_post', 'Delete Post')}</div>
               </button>
             )}
+            {!dummy && <BestTimeChips onPick={setPickerDate} />}
             <DatePicker onChange={setPickerDate} date={pickerDate} />
             {!addEditSets && (
               <button

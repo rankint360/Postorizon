@@ -39,6 +39,8 @@ model Organization {
   aiKeys              OrganizationAiKey[]
   brandVoiceProfiles  BrandVoiceProfile[]
   inboxItemStates     InboxItemState[]
+  engagementSnapshots PostEngagementSnapshot[]
+  branding            OrganizationBranding?
   sets                Sets[]
   signatures          Signatures[]
   subscription        Subscription?
@@ -361,6 +363,10 @@ model Customer {
   id           String             @id @default(uuid())
   name         String
   orgId        String
+  // Postorizon Phase 3: unguessable token for the public (no-login)
+  // client report page — same pattern as Post.approvalToken. Null until
+  // the agency generates a report link for this client.
+  reportToken  String?            @unique
   createdAt    DateTime           @default(now())
   updatedAt    DateTime           @updatedAt
   deletedAt    DateTime?
@@ -402,6 +408,7 @@ model Integration {
   orderItems            OrderItems[]
   plugs                 Plugs[]
   posts                 Post[]
+  engagementSnapshots   PostEngagementSnapshot[]
 
   @@unique([organizationId, internalId])
   @@index([rootInternalId])
@@ -501,6 +508,7 @@ model Post {
   submittedForOrder          Orders?                   @relation(fields: [submittedForOrderId], references: [id])
   submittedForOrganization   Organization?             @relation("submittedForOrg", fields: [submittedForOrganizationId], references: [id])
   approvals                  PostApproval[]
+  engagementSnapshots        PostEngagementSnapshot[]
   tags                       TagsPosts[]
 
   @@index([group])
@@ -1862,6 +1870,62 @@ model InboxItemState {
 
   @@unique([organizationId, sourceType, sourceId])
   @@index([organizationId, assigneeId])
+}
+
+// Postorizon Phase 3: white-label branding for an organization
+// (agency tier) — shown on client-facing public pages (approval page,
+// client report). One row per organization; absence of a row means
+// "no custom branding" (the pages fall back to the Postorizon look).
+model OrganizationBranding {
+  id             String       @id @default(uuid())
+  organizationId String       @unique
+  logoUrl        String?
+  accentColor    String?
+  portalName     String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([organizationId])
+}
+
+// Postorizon Phase 3: persisted engagement snapshot for one published
+// post, captured by sampling the same provider analytics path the
+// analytics controller serves live (PostsService.checkPostAnalytics).
+// Until Phase 3 nothing was stored, which blocked best-time scheduling,
+// prescriptive analytics and the agent feedback loop. `metrics` holds the
+// normalized canonical buckets; `raw` holds the provider AnalyticsData[]
+// exactly as returned, so no provider detail is lost. Normalized columns
+// are nullable: null means "the provider did not report this metric",
+// which is different from a reported zero. `engagement` is the computed
+// interaction total (likes + comments + shares + saves + clicks + quotes,
+// or the provider-reported engagement total when no components exist).
+model PostEngagementSnapshot {
+  id                 String       @id @default(uuid())
+  organizationId     String
+  postId             String
+  integrationId      String
+  providerIdentifier String
+  capturedAt         DateTime     @default(now())
+  publishDate        DateTime
+  views              Int?
+  reach              Int?
+  likes              Int?
+  comments           Int?
+  shares             Int?
+  saves              Int?
+  clicks             Int?
+  quotes             Int?
+  engagement         Int          @default(0)
+  metrics            Json
+  raw                Json
+  organization       Organization @relation(fields: [organizationId], references: [id])
+  post               Post         @relation(fields: [postId], references: [id])
+  integration        Integration  @relation(fields: [integrationId], references: [id])
+
+  @@index([organizationId, capturedAt])
+  @@index([postId, capturedAt])
+  @@index([integrationId, capturedAt])
 }
 
 // Postorizon Phase 2: brand-voice memory for a customer group (MVP_SPEC

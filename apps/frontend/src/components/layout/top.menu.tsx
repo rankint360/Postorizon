@@ -102,6 +102,55 @@ export const useMenuItem = () => {
       ),
       path: '/media',
     },
+    {
+      name: t('inbox', 'Inbox'),
+      icon: (
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="20"
+          height="21"
+          viewBox="0 0 20 21"
+          fill="none"
+        >
+          <path
+            d="M2.5 13.5L4.6 5.9C4.83 5.06 5.6 4.5 6.47 4.5H13.53C14.4 4.5 15.17 5.06 15.4 5.9L17.5 13.5M2.5 13.5H7.1C7.42 13.5 7.72 13.66 7.89 13.93L8.6 15.06C8.77 15.34 9.07 15.5 9.4 15.5H10.6C10.93 15.5 11.23 15.34 11.4 15.06L12.11 13.93C12.28 13.66 12.58 13.5 12.9 13.5H17.5M2.5 13.5V15.4C2.5 16.45 3.35 17.3 4.4 17.3H15.6C16.65 17.3 17.5 16.45 17.5 15.4V13.5"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      ),
+      path: '/inbox',
+    },
+    {
+      name: t('capture', 'Capture'),
+      icon: (
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="20"
+          height="21"
+          viewBox="0 0 20 21"
+          fill="none"
+        >
+          <circle
+            cx="10"
+            cy="10.5"
+            r="8.2"
+            stroke="currentColor"
+            strokeWidth="1.5"
+          />
+          <path
+            d="M10 6.8V14.2M6.3 10.5H13.7"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      ),
+      path: '/capture',
+    },
   ] satisfies MenuItemInterface[] as MenuItemInterface[];
 
   const secondMenu = [

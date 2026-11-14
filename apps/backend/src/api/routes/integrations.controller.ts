@@ -11,6 +11,7 @@ import {
 import { ioRedis } from '@gitroom/nestjs-libraries/redis/redis.service';
 import { IntegrationManager } from '@gitroom/nestjs-libraries/integrations/integration.manager';
 import { IntegrationService } from '@gitroom/nestjs-libraries/database/prisma/integrations/integration.service';
+import { IntegrationHealthService } from '@gitroom/nestjs-libraries/database/prisma/integrations/integration.health.service';
 import { GetOrgFromRequest } from '@gitroom/nestjs-libraries/user/org.from.request';
 import { Organization, User } from '@prisma/client';
 import { IntegrationFunctionDto } from '@gitroom/nestjs-libraries/dtos/integrations/integration.function.dto';
@@ -45,7 +46,8 @@ export class IntegrationsController {
     private _integrationManager: IntegrationManager,
     private _integrationService: IntegrationService,
     private _postService: PostsService,
-    private _refreshIntegrationService: RefreshIntegrationService
+    private _refreshIntegrationService: RefreshIntegrationService,
+    private _integrationHealthService: IntegrationHealthService
   ) {}
 
   @Post('/provider/:id/connect')
@@ -146,6 +148,12 @@ export class IntegrationsController {
         })
       ),
     };
+  }
+
+  /** Phase 3: per-channel reliability summary (token expiry + errors). */
+  @Get('/health')
+  async getIntegrationHealth(@GetOrgFromRequest() org: Organization) {
+    return this._integrationHealthService.getOrgHealth(org.id);
   }
 
   @Post('/:id/settings')

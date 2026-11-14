@@ -19,6 +19,9 @@ import { PostApprovalsController } from '@gitroom/backend/api/routes/post.approv
 import { AiSettingsController } from '@gitroom/backend/api/routes/ai.settings.controller';
 import { InboxController } from '@gitroom/backend/api/routes/inbox.controller';
 import { AgentPlanController } from '@gitroom/backend/api/routes/agent.plan.controller';
+import { EngagementController } from '@gitroom/backend/api/routes/engagement.controller';
+import { BrandingController } from '@gitroom/backend/api/routes/branding.controller';
+import { PublicClientReportController } from '@gitroom/backend/api/routes/public.client.report.controller';
 import { MediaController } from '@gitroom/backend/api/routes/media.controller';
 import { ClippingController } from '@gitroom/backend/api/routes/clipping.controller';
 import { MediaWidgetController } from '@gitroom/backend/api/routes/media.widget.controller';
@@ -72,6 +75,8 @@ const authenticatedController = [
   AiSettingsController,
   InboxController,
   AgentPlanController,
+  EngagementController,
+  BrandingController,
   MediaController,
   ClippingController,
   BillingController,
@@ -107,6 +112,7 @@ const authenticatedController = [
         EnterpriseController,
         NoAuthIntegrationsController,
         PublicPostApprovalsController,
+        PublicClientReportController,
         OAuthController,
         MediaWidgetController,
         ClippingWidgetController,
