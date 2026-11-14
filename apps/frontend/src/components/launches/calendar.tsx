@@ -413,7 +413,7 @@ const usePostActions = (onMutate?: () => void) => {
     [fetch, toaster, t]
   );
 
-  return { editPost, deletePost, copyDebugJson, openStatistics, openMissingRelease, openPost };
+  return { editPost, deletePost, copyDebugJson, openStatistics, openMissingRelease, openApproval, openPost };
 };
 
 // A day view slot is a minute of the user's day, on the day in view
