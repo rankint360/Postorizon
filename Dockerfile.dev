@@ -25,4 +25,10 @@ COPY var/docker/nginx.conf /etc/nginx/nginx.conf
 RUN pnpm install
 RUN NODE_OPTIONS="--max-old-space-size=4096" pnpm run build
 
-CMD ["sh", "-c", "nginx && pnpm run pm2"]
+# Start: nginx fronts the three apps (see DEPLOYMENT.md §1/§4).
+# Render injects $PORT and routes web traffic to it, while nginx.conf
+# listens on the fixed port 5000 that docker-compose publishes. When
+# $PORT is set (Render), rewrite the single `listen 5000;` directive to
+# $PORT before starting nginx; when it is unset (local compose), the
+# config is left untouched and behaviour is identical to before.
+CMD ["sh", "-c", "if [ -n \"$PORT\" ]; then sed -i \"s/listen 5000;/listen $PORT;/\" /etc/nginx/nginx.conf; fi && nginx && pnpm run pm2"]

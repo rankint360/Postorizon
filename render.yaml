@@ -1,0 +1,323 @@
+# Postorizon — Render Blueprint
+#
+# This file TRANSLATES docker-compose.yaml to Render (see RENDER.md for
+# the operator walkthrough and DEPLOYMENT.md for the platform-neutral
+# runbook). The compose stack is the source of truth; nothing here
+# redesigns it:
+#
+#   compose service        Render resource
+#   ───────────────        ─────────────────────────────────────────────
+#   postiz (app)           web service `postorizon` (Dockerfile.dev)
+#   postiz-postgres        Render Postgres `postorizon-db`
+#   postiz-redis           Render Key Value `postorizon-redis`
+#   temporal               private service `postorizon-temporal`
+#                          (prebuilt temporalio/auto-setup image)
+#   temporal-postgresql    Render Postgres `postorizon-temporal-db`
+#   temporal-elasticsearch NOT deployed — Temporal uses its standard
+#                          SQL visibility store instead (v1 decision)
+#   temporal-ui            NOT deployed in v1 (optional later add)
+#   temporal-admin-tools   NOT deployed (Render Shell covers one-offs)
+#   spotlight              NOT deployed (dev-only Sentry sidecar)
+#   postiz-config volume   NOT replicated — nothing in the codebase
+#                          references /config (repo-wide grep; see
+#                          RENDER.md "Watch items")
+#   postiz-uploads volume  persistent disk on the web service (/uploads)
+#
+# Secrets: never commit values. Owner-filled secrets are declared with
+# `sync: false` directly on the service (Render prompts for them during
+# Blueprint creation) — they intentionally do NOT live in envVarGroups,
+# because Render ignores `sync: false` inside a group. The one group
+# below holds only non-secret literal configuration.
+#
+# Plan slugs and field shapes were verified against Render's official
+# Blueprint YAML reference (render.com/docs/blueprint-spec) on
+# 2026-11-14 — Render renames plans from time to time; if the dashboard
+# ever rejects a slug, pick the equivalently sized plan it offers.
+
+envVarGroups:
+  # ── Core: non-secret literal configuration ────────────────────────
+  - name: postorizon-core
+    envVars:
+      # Public origins — the app lives at app.postorizon.com
+      # (DEPLOYMENT.md §3.1; compose used http://localhost:4007).
+      - key: MAIN_URL
+        value: https://app.postorizon.com
+      - key: FRONTEND_URL
+        value: https://app.postorizon.com
+      - key: NEXT_PUBLIC_BACKEND_URL
+        value: https://app.postorizon.com/api
+      # Server-side frontend → backend fetch, same container (§3.1).
+      - key: BACKEND_INTERNAL_URL
+        value: http://localhost:3000
+      # Without RUN_CRON no recurring workflow ever starts (§5).
+      - key: RUN_CRON
+        value: "true"
+      - key: IS_GENERAL
+        value: "true"
+      # Set to "true" in the dashboard after creating the owner
+      # account if this deployment should stay private (§7 step 5).
+      - key: DISABLE_REGISTRATION
+        value: "false"
+      # Storage stays on the local provider, backed by the persistent
+      # disk mounted at /uploads (§3.2).
+      - key: STORAGE_PROVIDER
+        value: local
+      - key: UPLOAD_DIRECTORY
+        value: /uploads
+      - key: NEXT_PUBLIC_UPLOAD_STATIC_DIRECTORY
+        value: /uploads
+      # Throttler limit (compose sets 30; §3.6).
+      - key: API_LIMIT
+        value: "30"
+      # Non-secret channel default carried over from compose.
+      - key: MASTODON_URL
+        value: https://mastodon.social
+
+databases:
+  # App database — compose runs postgres:17-alpine (§2).
+  - name: postorizon-db
+    plan: 0.1c-256mb
+    region: oregon
+    postgresMajorVersion: "17"
+    databaseName: postorizon
+
+  # Temporal's own database — compose runs postgres:16 (§2). The
+  # auto-setup image creates its `temporal` and `temporal_visibility`
+  # databases on this instance at first boot (Render Postgres users
+  # can create additional databases on their instance).
+  - name: postorizon-temporal-db
+    plan: 0.1c-256mb
+    region: oregon
+    postgresMajorVersion: "16"
+
+services:
+  # ── The app ───────────────────────────────────────────────────────
+  # One container runs nginx + backend (3000) + frontend (4200) +
+  # orchestrator (3002) under pm2, exactly as in compose (DEPLOYMENT.md
+  # §1). nginx listens on Render's $PORT thanks to the start-seam
+  # rewrite in Dockerfile.dev; prisma db push runs automatically at
+  # container start, before the apps launch (§4).
+  - type: web
+    name: postorizon
+    runtime: docker
+    dockerfilePath: ./Dockerfile.dev
+    dockerContext: .
+    # 2 CPU / 4 GB — the container hosts all three apps plus nginx
+    # and the build's memory headroom carries over to runtime.
+    plan: 2c-4g
+    region: oregon
+    # A service with a persistent disk cannot scale past 1 instance.
+    numInstances: 1
+    domains:
+      - app.postorizon.com
+    disk:
+      name: postorizon-uploads
+      mountPath: /uploads
+      sizeGB: 10
+    envVars:
+      - fromGroup: postorizon-core
+      # Generated once by Render (base64 256-bit). Also the root of
+      # the BYOK/AI-key encryption helpers — treat it as permanent:
+      # rotating it invalidates stored encrypted keys (§3.1, §10.1).
+      - key: JWT_SECRET
+        generateValue: true
+      - key: DATABASE_URL
+        fromDatabase:
+          name: postorizon-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: postorizon-redis
+          property: connectionString
+      - key: TEMPORAL_ADDRESS
+        fromService:
+          type: pserv
+          name: postorizon-temporal
+          property: hostport
+
+      # ── Email (owner-filled; §3.3) ──────────────────────────────
+      # Until a real provider + credentials are set, mail stays on
+      # EmptyProvider: nothing is sent and accounts auto-activate.
+      - key: EMAIL_PROVIDER
+        sync: false
+      - key: EMAIL_FROM_ADDRESS
+        sync: false
+      - key: EMAIL_FROM_NAME
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: EMAIL_HOST
+        sync: false
+      - key: EMAIL_PORT
+        sync: false
+      - key: EMAIL_SECURE
+        sync: false
+      - key: EMAIL_USER
+        sync: false
+      - key: EMAIL_PASS
+        sync: false
+      - key: SES_REGION
+        sync: false
+      - key: SES_ACCESS_KEY
+        sync: false
+      - key: SES_SECRET_ACCESS_KEY
+        sync: false
+
+      # ── Payments — Stripe (owner-filled; §3.4) ──────────────────
+      # Behaviour switch: while STRIPE_PUBLISHABLE_KEY is unset the
+      # no-subscription fallback is a top tier (right for a private
+      # staging). For production set all three together — setting
+      # only the publishable key flips every org to FREE limits.
+      - key: STRIPE_PUBLISHABLE_KEY
+        sync: false
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_SIGNING_KEY
+        sync: false
+
+      # ── Channels (owner-filled; §3.5) ───────────────────────────
+      # One client id/secret pair per social channel, issued by each
+      # platform's developer app (see DEV_APPS.md). A provider is
+      # exercised only when its credentials are present, so these can
+      # be filled in one network at a time after launch.
+      # X_URL is an OAuth base override, not a secret — compose ships
+      # it empty (the provider falls back to FRONTEND_URL).
+      - key: X_URL
+        value: ""
+      - key: X_API_KEY
+        sync: false
+      - key: X_API_SECRET
+        sync: false
+      - key: LINKEDIN_CLIENT_ID
+        sync: false
+      - key: LINKEDIN_CLIENT_SECRET
+        sync: false
+      - key: REDDIT_CLIENT_ID
+        sync: false
+      - key: REDDIT_CLIENT_SECRET
+        sync: false
+      - key: GITHUB_CLIENT_ID
+        sync: false
+      - key: GITHUB_CLIENT_SECRET
+        sync: false
+      - key: APPLE_CLIENT_ID
+        sync: false
+      - key: APPLE_TEAM_ID
+        sync: false
+      - key: APPLE_KEY_ID
+        sync: false
+      - key: APPLE_PRIVATE_KEY
+        sync: false
+      - key: BEEHIIVE_API_KEY
+        sync: false
+      - key: BEEHIIVE_PUBLICATION_ID
+        sync: false
+      - key: THREADS_APP_ID
+        sync: false
+      - key: THREADS_APP_SECRET
+        sync: false
+      - key: FACEBOOK_APP_ID
+        sync: false
+      - key: FACEBOOK_APP_SECRET
+        sync: false
+      - key: YOUTUBE_CLIENT_ID
+        sync: false
+      - key: YOUTUBE_CLIENT_SECRET
+        sync: false
+      - key: TIKTOK_CLIENT_ID
+        sync: false
+      - key: TIKTOK_CLIENT_SECRET
+        sync: false
+      - key: TIKTOK_BUSINESS_CLIENT_ID
+        sync: false
+      - key: TIKTOK_BUSINESS_CLIENT_SECRET
+        sync: false
+      - key: PINTEREST_CLIENT_ID
+        sync: false
+      - key: PINTEREST_CLIENT_SECRET
+        sync: false
+      - key: DRIBBBLE_CLIENT_ID
+        sync: false
+      - key: DRIBBBLE_CLIENT_SECRET
+        sync: false
+      - key: TUMBLR_CLIENT_ID
+        sync: false
+      - key: TUMBLR_CLIENT_SECRET
+        sync: false
+      - key: DISCORD_CLIENT_ID
+        sync: false
+      - key: DISCORD_CLIENT_SECRET
+        sync: false
+      - key: DISCORD_BOT_TOKEN_ID
+        sync: false
+      - key: SLACK_ID
+        sync: false
+      - key: SLACK_SECRET
+        sync: false
+      - key: MASTODON_CLIENT_ID
+        sync: false
+      - key: MASTODON_CLIENT_SECRET
+        sync: false
+
+      # ── AI (optional; §3.6) ─────────────────────────────────────
+      # Platform-level fallback key; organisations can bring their
+      # own keys (BYOK) in the app instead.
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_OAUTH_CLIENT_ID
+        sync: false
+
+  # ── Temporal server ───────────────────────────────────────────────
+  # The same prebuilt auto-setup image compose runs (§2), pointed at
+  # the managed Temporal Postgres. Differences from compose, by
+  # decision: no Elasticsearch wiring (ENABLE_ES/ES_SEEDS/ES_VERSION
+  # omitted → standard SQL visibility) and no DYNAMIC_CONFIG_FILE_PATH
+  # (the ./dynamicconfig mount can't exist here; its settings are
+  # tuning-only — see RENDER.md).
+  - type: pserv
+    name: postorizon-temporal
+    runtime: image
+    image:
+      url: docker.io/temporalio/auto-setup:1.28.1
+    # 1 CPU / 2 GB — server + setup jobs only; workers live in the
+    # app container's orchestrator process.
+    plan: 1c-2g
+    region: oregon
+    envVars:
+      - key: DB
+        value: postgres12
+      - key: DB_PORT
+        fromDatabase:
+          name: postorizon-temporal-db
+          property: port
+      - key: POSTGRES_SEEDS
+        fromDatabase:
+          name: postorizon-temporal-db
+          property: host
+      - key: POSTGRES_USER
+        fromDatabase:
+          name: postorizon-temporal-db
+          property: user
+      - key: POSTGRES_PWD
+        fromDatabase:
+          name: postorizon-temporal-db
+          property: password
+      - key: TEMPORAL_NAMESPACE
+        value: default
+
+  # ── Redis (queues / throttling) ───────────────────────────────────
+  # compose runs stock redis:7.2, whose default eviction policy is
+  # noeviction — mirrored here on purpose (an LRU policy could evict
+  # queued jobs). journal-snapshot is Render's default persistence
+  # for paid Key Value instances, set explicitly so it can't drift.
+  - type: keyvalue
+    name: postorizon-redis
+    # Smallest paid (persistent) Key Value plan: 256 MB RAM.
+    plan: 256mb
+    region: oregon
+    # Required field. Empty list = no public-internet access at all;
+    # the app reaches it over Render's private network.
+    ipAllowList: []
+    maxmemoryPolicy: noeviction
+    persistenceMode: journal-snapshot
