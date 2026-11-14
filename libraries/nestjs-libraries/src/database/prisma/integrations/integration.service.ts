@@ -337,6 +337,12 @@ export class IntegrationService {
     return this._integrationRepository.setBetweenRefreshSteps(id);
   }
 
+  // Phase 5 backfill: encrypt integration tokens still stored as legacy
+  // plaintext. Idempotent; safe to re-run (see the repository method).
+  async encryptStoredIntegrationTokens() {
+    return this._integrationRepository.encryptPlaintextIntegrationTokens();
+  }
+
   async refreshTokens() {
     const integrations = await this._integrationRepository.needsToBeRefreshed();
     for (const integration of integrations) {

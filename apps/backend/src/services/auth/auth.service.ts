@@ -12,6 +12,12 @@ import { EmailService } from '@gitroom/nestjs-libraries/services/email.service';
 import { NewsletterService } from '@gitroom/nestjs-libraries/newsletter/newsletter.service';
 import { AttributionService } from '@gitroom/nestjs-libraries/services/attribution/attribution.service';
 
+// Phase 5 (SECURITY_AUDIT.md (a) Flag 1): session tokens expire after
+// 30 days and carry the user's sessionEpoch so they can be revoked.
+// One-shot tokens (activation, password reset, invites, extension login)
+// keep using signJWT without options and are unchanged.
+export const SESSION_TOKEN_TTL_SECONDS = 60 * 60 * 24 * 30; // 30 days
+
 @Injectable()
 export class AuthService {
   constructor(
@@ -76,13 +82,18 @@ export class AuthService {
               )
             : false;
 
-        const obj = { addedOrg, jwt: await this.jwt(create.users[0].user) };
+        // The activation link keeps the historical one-shot token from
+        // jwt(); only the token returned for the session cookie is a
+        // session token (Phase 5). When activation is required the
+        // controller discards the returned token, so the split is
+        // invisible on that path.
+        const activationJwt = await this.jwt(create.users[0].user);
         await this._emailService.sendEmailSync(
           body.email,
           'Activate your account',
-          `Click <a href="${process.env.FRONTEND_URL}/auth/activate/${obj.jwt}">here</a> to activate your account`
+          `Click <a href="${process.env.FRONTEND_URL}/auth/activate/${activationJwt}">here</a> to activate your account`
         );
-        return obj;
+        return { addedOrg, jwt: await this.sessionJwt(create.users[0].user) };
       }
 
       if (!user || !AuthChecker.comparePassword(body.password, user.password)) {
@@ -110,7 +121,7 @@ export class AuthService {
         throw new Error('User is not activated');
       }
 
-      return { addedOrg, jwt: await this.jwt(user) };
+      return { addedOrg, jwt: await this.sessionJwt(user) };
     }
 
     const user = await this.loginOrRegisterProvider(
@@ -129,7 +140,7 @@ export class AuthService {
             addToOrg.role
           )
         : false;
-    return { addedOrg, jwt: await this.jwt(user) };
+    return { addedOrg, jwt: await this.sessionJwt(user) };
   }
 
   public getOrgFromCookie(cookie?: string) {
@@ -289,7 +300,11 @@ export class AuthService {
       user.activated = true;
       this._track('register', user.email, tracking).catch((err) => {});
       await NewsletterService.register(user.email);
-      return this.jwt(user as any);
+      // The returned token becomes the session cookie: sign a session
+      // token from the fresh DB row. The decoded activation payload has no
+      // sessionEpoch, and its epoch may already have moved (e.g. a
+      // password reset between registration and activation).
+      return this.sessionJwt({ ...getUserAgain, activated: true });
     }
 
     return false;
@@ -363,7 +378,7 @@ export class AuthService {
               addToOrg.role
             )
           : false;
-      return { jwt: await this.jwt(checkExists), addedOrg };
+      return { jwt: await this.sessionJwt(checkExists), addedOrg };
     }
 
     return { token };
@@ -374,5 +389,20 @@ export class AuthService {
       delete user.password;
     }
     return AuthChecker.signJWT(user);
+  }
+
+  // Session tokens only: the same claim set as jwt() (the user row minus
+  // the password) plus the sessionEpoch claim and a 30-day exp.
+  // AuthMiddleware rejects session tokens whose epoch no longer matches
+  // the user row, which is what makes revocation (password reset,
+  // sign-out-everywhere) work. One-shot tokens never come through here.
+  private async sessionJwt(user: User) {
+    if (user.password) {
+      delete user.password;
+    }
+    return AuthChecker.signJWT(
+      { ...user, sessionEpoch: user.sessionEpoch ?? 0 },
+      { expiresIn: SESSION_TOKEN_TTL_SECONDS }
+    );
   }
 }

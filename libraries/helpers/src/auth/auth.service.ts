@@ -1,4 +1,4 @@
-import { sign, verify } from 'jsonwebtoken';
+import { sign, verify, SignOptions } from 'jsonwebtoken';
 import { hashSync, compareSync } from 'bcrypt';
 import crypto from 'crypto';
 // @ts-ignore
@@ -39,8 +39,12 @@ export class AuthService {
   static comparePassword(password: string, hash: string) {
     return compareSync(password, hash);
   }
-  static signJWT(value: object) {
-    return sign(value, process.env.JWT_SECRET!);
+  // The options parameter is optional and defaults to the historical
+  // behaviour: every existing one-shot token call site (activation, reset,
+  // invite, extension, ...) passes no options and produces byte-identical
+  // tokens. Only the session signer passes { expiresIn } (Phase 5).
+  static signJWT(value: object, options?: SignOptions) {
+    return sign(value, process.env.JWT_SECRET!, options);
   }
   static verifyJWT(token: string) {
     return verify(token, process.env.JWT_SECRET!);

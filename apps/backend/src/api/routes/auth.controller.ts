@@ -16,6 +16,7 @@ import { Response, Request } from 'express';
 import { CreateOrgUserDto } from '@gitroom/nestjs-libraries/dtos/auth/create.org.user.dto';
 import { LoginUserDto } from '@gitroom/nestjs-libraries/dtos/auth/login.user.dto';
 import { AuthService } from '@gitroom/backend/services/auth/auth.service';
+import { SESSION_TOKEN_TTL_SECONDS } from '@gitroom/backend/services/auth/auth.service';
 import { ForgotReturnPasswordDto } from '@gitroom/nestjs-libraries/dtos/auth/forgot-return.password.dto';
 import { ForgotPasswordDto } from '@gitroom/nestjs-libraries/dtos/auth/forgot.password.dto';
 import { ResendActivationDto } from '@gitroom/nestjs-libraries/dtos/auth/resend-activation.dto';
@@ -97,7 +98,9 @@ export class AuthController {
               sameSite: 'none',
             }
           : {}),
-        expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 365),
+        // the cookie now lives exactly as long as the session token
+        // inside it (Phase 5: 30-day exp)
+        expires: new Date(Date.now() + 1000 * SESSION_TOKEN_TTL_SECONDS),
       });
 
       if (process.env.NOT_SECURED) {
@@ -164,7 +167,9 @@ export class AuthController {
               sameSite: 'none',
             }
           : {}),
-        expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 365),
+        // the cookie now lives exactly as long as the session token
+        // inside it (Phase 5: 30-day exp)
+        expires: new Date(Date.now() + 1000 * SESSION_TOKEN_TTL_SECONDS),
       });
 
       if (process.env.NOT_SECURED) {
@@ -282,7 +287,9 @@ export class AuthController {
             sameSite: 'none',
           }
         : {}),
-      expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 365),
+      // the cookie now lives exactly as long as the session token
+      // inside it (Phase 5: 30-day exp)
+      expires: new Date(Date.now() + 1000 * SESSION_TOKEN_TTL_SECONDS),
     });
 
     if (process.env.NOT_SECURED) {
@@ -397,7 +404,9 @@ export class AuthController {
             sameSite: 'none',
           }
         : {}),
-      expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 365),
+      // the cookie now lives exactly as long as the session token
+      // inside it (Phase 5: 30-day exp)
+      expires: new Date(Date.now() + 1000 * SESSION_TOKEN_TTL_SECONDS),
     });
 
     if (process.env.NOT_SECURED) {

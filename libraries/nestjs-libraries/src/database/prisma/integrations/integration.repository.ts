@@ -7,6 +7,10 @@ import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import { IntegrationTimeDto } from '@gitroom/nestjs-libraries/dtos/integrations/integration.time.dto';
 import { UploadFactory } from '@gitroom/nestjs-libraries/upload/upload.factory';
 import { PlugDto } from '@gitroom/nestjs-libraries/dtos/plugs/plug.dto';
+import {
+  decryptIntegrationTokens,
+  encryptIntegrationToken,
+} from '@gitroom/nestjs-libraries/database/prisma/integrations/integration.token.crypto';
 
 @Injectable()
 export class IntegrationRepository {
@@ -134,8 +138,8 @@ export class IntegrationRepository {
     });
   }
 
-  getPlug(plugId: string) {
-    return this._plugs.model.plugs.findFirst({
+  async getPlug(plugId: string) {
+    const plug = await this._plugs.model.plugs.findFirst({
       where: {
         id: plugId,
       },
@@ -143,6 +147,10 @@ export class IntegrationRepository {
         integration: true,
       },
     });
+    if (plug?.integration) {
+      decryptIntegrationTokens(plug.integration);
+    }
+    return plug;
   }
 
   async getPlugs(orgId: string, integrationId: string) {
@@ -191,6 +199,7 @@ export class IntegrationRepository {
             rootInternalId: true,
             refreshToken: true,
             tokenExpiration: true,
+            providerIdentifier: true,
           },
         })
       : null;
@@ -216,7 +225,24 @@ export class IntegrationRepository {
       });
     }
 
-    return this._integration.model.integration.update({
+    // Caller-supplied tokens arrive as plaintext and are stored encrypted
+    // (Phase 5). The fresh row's refreshToken copied forward below is
+    // already in stored form and is deliberately NOT passed through here.
+    const providerIdentifier =
+      params.providerIdentifier ||
+      existing?.providerIdentifier ||
+      fresh?.providerIdentifier;
+    if (params.token) {
+      params.token = encryptIntegrationToken(providerIdentifier, params.token);
+    }
+    if (params.refreshToken) {
+      params.refreshToken = encryptIntegrationToken(
+        providerIdentifier,
+        params.refreshToken
+      );
+    }
+
+    const updated = await this._integration.model.integration.update({
       where: {
         ...(existing ? { id: existing.id } : { id }),
       },
@@ -234,6 +260,7 @@ export class IntegrationRepository {
         refreshNeeded: false,
       },
     });
+    return decryptIntegrationTokens(updated);
   }
 
   disconnectChannel(org: string, id: string) {
@@ -248,14 +275,15 @@ export class IntegrationRepository {
     });
   }
 
-  getIntegrationByInternalId(org: string, internalId: string) {
-    return this._integration.model.integration.findFirst({
+  async getIntegrationByInternalId(org: string, internalId: string) {
+    const integration = await this._integration.model.integration.findFirst({
       where: {
         organizationId: org,
         internalId,
         deletedAt: null,
       },
     });
+    return decryptIntegrationTokens(integration);
   }
 
   // Moves a channel to another provider in place (MIGRATE_PROVIDERS): only the
@@ -342,6 +370,11 @@ export class IntegrationRepository {
           ]),
         }
       : {};
+    // Tokens are stored encrypted (Phase 5); callers keep passing and
+    // receiving plaintext. Encrypting once here keeps the upsert and the
+    // oneTimeToken sibling propagation below consistent.
+    const storedToken = encryptIntegrationToken(provider, token) as string;
+    const storedRefreshToken = encryptIntegrationToken(provider, refreshToken);
     const upsert = await this._integration.model.integration.upsert({
       where: {
         organizationId_internalId: {
@@ -353,11 +386,11 @@ export class IntegrationRepository {
         type: type as any,
         name,
         providerIdentifier: provider,
-        token,
+        token: storedToken,
         profile: username,
         ...(picture ? { picture } : {}),
         inBetweenSteps: isBetweenSteps,
-        refreshToken,
+        refreshToken: storedRefreshToken,
         ...(expiresIn
           ? { tokenExpiration: new Date(Date.now() + expiresIn * 1000) }
           : {}),
@@ -385,9 +418,9 @@ export class IntegrationRepository {
         ...(picture ? { picture } : {}),
         profile: username,
         providerIdentifier: provider,
-        token,
+        token: storedToken,
         // never wipe a stored refresh token with an empty one
-        ...(refreshToken ? { refreshToken } : {}),
+        ...(refreshToken ? { refreshToken: storedRefreshToken } : {}),
         ...(expiresIn
           ? { tokenExpiration: new Date(Date.now() + expiresIn * 1000) }
           : {}),
@@ -417,8 +450,8 @@ export class IntegrationRepository {
           rootInternalId: rootId,
         },
         data: {
-          token,
-          refreshToken,
+          token: storedToken,
+          refreshToken: storedRefreshToken,
           refreshNeeded: false,
           ...(expiresIn
             ? { tokenExpiration: new Date(Date.now() + expiresIn * 1000) }
@@ -427,11 +460,11 @@ export class IntegrationRepository {
       });
     }
 
-    return upsert;
+    return decryptIntegrationTokens(upsert);
   }
 
-  needsToBeRefreshed() {
-    return this._integration.model.integration.findMany({
+  async needsToBeRefreshed() {
+    const integrations = await this._integration.model.integration.findMany({
       where: {
         tokenExpiration: {
           lte: dayjs().add(1, 'day').toDate(),
@@ -441,6 +474,60 @@ export class IntegrationRepository {
         refreshNeeded: false,
       },
     });
+    for (const integration of integrations) {
+      decryptIntegrationTokens(integration);
+    }
+    return integrations;
+  }
+
+  // Phase 5 backfill for rows written before token encryption: encrypts any
+  // token/refreshToken still stored as legacy plaintext. Idempotent —
+  // already-prefixed values and pre-encrypted provider tokens are skipped
+  // by encryptIntegrationToken, so re-running is a no-op. Soft-deleted rows
+  // are excluded (their tokens were md5-anonymised on account deletion).
+  async encryptPlaintextIntegrationTokens() {
+    const integrations = await this._integration.model.integration.findMany({
+      where: {
+        deletedAt: null,
+      },
+      select: {
+        id: true,
+        providerIdentifier: true,
+        token: true,
+        refreshToken: true,
+      },
+    });
+
+    let updated = 0;
+    for (const integration of integrations) {
+      const data: { token?: string; refreshToken?: string | null } = {};
+      const token = encryptIntegrationToken(
+        integration.providerIdentifier,
+        integration.token
+      );
+      const refreshToken = encryptIntegrationToken(
+        integration.providerIdentifier,
+        integration.refreshToken
+      );
+      if (token !== integration.token) {
+        data.token = token as string;
+      }
+      if (refreshToken !== integration.refreshToken) {
+        data.refreshToken = refreshToken;
+      }
+      if (!Object.keys(data).length) {
+        continue;
+      }
+      await this._integration.model.integration.update({
+        where: {
+          id: integration.id,
+        },
+        data,
+      });
+      updated++;
+    }
+
+    return { scanned: integrations.length, updated };
   }
 
   async setBetweenRefreshSteps(id: string) {
@@ -485,13 +572,14 @@ export class IntegrationRepository {
     });
   }
 
-  getIntegrationById(org: string, id: string) {
-    return this._integration.model.integration.findFirst({
+  async getIntegrationById(org: string, id: string) {
+    const integration = await this._integration.model.integration.findFirst({
       where: {
         organizationId: org,
         id,
       },
     });
+    return decryptIntegrationTokens(integration);
   }
 
   async getIntegrationForOrder(
@@ -622,8 +710,8 @@ export class IntegrationRepository {
     });
   }
 
-  getIntegrationsList(org: string) {
-    return this._integration.model.integration.findMany({
+  async getIntegrationsList(org: string) {
+    const integrations = await this._integration.model.integration.findMany({
       where: {
         organizationId: org,
         deletedAt: null,
@@ -632,6 +720,10 @@ export class IntegrationRepository {
         customer: true,
       },
     });
+    for (const integration of integrations) {
+      decryptIntegrationTokens(integration);
+    }
+    return integrations;
   }
 
   private async latestPostsFor(

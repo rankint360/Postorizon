@@ -16,6 +16,7 @@ import isSameOrAfter from 'dayjs/plugin/isSameOrAfter';
 import utc from 'dayjs/plugin/utc';
 import { v4 as uuidv4 } from 'uuid';
 import { CreateTagDto } from '@gitroom/nestjs-libraries/dtos/posts/create.tag.dto';
+import { decryptIntegrationTokens } from '@gitroom/nestjs-libraries/database/prisma/integrations/integration.token.crypto';
 
 dayjs.extend(isoWeek);
 dayjs.extend(weekOfYear);
@@ -411,8 +412,8 @@ export class PostsRepository {
     });
   }
 
-  getPostsByGroup(orgId: string, group: string) {
-    return this._post.model.post.findMany({
+  async getPostsByGroup(orgId: string, group: string) {
+    const posts = await this._post.model.post.findMany({
       where: {
         group,
         ...(orgId ? { organizationId: orgId } : {}),
@@ -432,6 +433,10 @@ export class PostsRepository {
         },
       },
     });
+    for (const post of posts) {
+      decryptIntegrationTokens(post.integration);
+    }
+    return posts;
   }
 
   // the posts of the other channels in the batch, without the given group
@@ -454,13 +459,13 @@ export class PostsRepository {
     });
   }
 
-  getPost(
+  async getPost(
     id: string,
     includeIntegration = false,
     orgId?: string,
     isFirst?: boolean
   ) {
-    return this._post.model.post.findUnique({
+    const post = await this._post.model.post.findUnique({
       where: {
         id,
         ...(orgId ? { organizationId: orgId } : {}),
@@ -485,6 +490,10 @@ export class PostsRepository {
         childrenPost: true,
       },
     });
+    if (post?.integration) {
+      decryptIntegrationTokens(post.integration);
+    }
+    return post;
   }
 
   updatePost(id: string, postId: string, releaseURL: string) {
@@ -879,8 +888,8 @@ export class PostsRepository {
     });
   }
 
-  getPostById(id: string, org?: string) {
-    return this._post.model.post.findUnique({
+  async getPostById(id: string, org?: string) {
+    const post = await this._post.model.post.findUnique({
       where: {
         id,
         ...(org ? { organizationId: org } : {}),
@@ -905,6 +914,10 @@ export class PostsRepository {
         },
       },
     });
+    if (post?.integration) {
+      decryptIntegrationTokens(post.integration);
+    }
+    return post;
   }
 
   private get postTimelineSelect() {

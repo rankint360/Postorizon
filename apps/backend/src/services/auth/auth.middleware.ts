@@ -57,6 +57,16 @@ export class AuthMiddleware implements NestMiddleware {
         throw new HttpForbiddenException();
       }
 
+      // Phase 5: session revocation. A session token carries the
+      // sessionEpoch it was minted under; password resets and
+      // sign-out-everywhere increment the column, which ends every older
+      // session here. Tokens minted before the column existed have no
+      // claim and count as epoch 0 (checked before the impersonation
+      // swap below, so it always applies to the real signed-in user).
+      if ((payload.sessionEpoch ?? 0) !== (user.sessionEpoch ?? 0)) {
+        throw new HttpForbiddenException();
+      }
+
       const impersonate = req.cookies.impersonate || req.headers.impersonate;
       if (user?.isSuperAdmin && impersonate) {
         const loadImpersonate = await this._organizationService.getUserOrg(

@@ -160,6 +160,10 @@ export class UsersService {
     return this._usersRepository.updatePassword(id, password);
   }
 
+  incrementSessionEpoch(id: string) {
+    return this._usersRepository.incrementSessionEpoch(id);
+  }
+
   getPersonal(userId: string) {
     return this._usersRepository.getPersonal(userId);
   }

@@ -366,6 +366,19 @@ export class UsersController {
     return this.logout(response);
   }
 
+  // Phase 5: sign out everywhere. Bumping the session epoch revokes
+  // every session token minted so far (AuthMiddleware rejects them on
+  // their next request and the client clears itself); the current
+  // device is then signed out through the normal logout as well.
+  @Post('/logout-all')
+  async logoutAll(
+    @GetUserFromRequest() user: User,
+    @Res({ passthrough: true }) response: Response
+  ) {
+    await this._userService.incrementSessionEpoch(user.id);
+    return this.logout(response);
+  }
+
   @Post('/logout')
   logout(@Res({ passthrough: true }) response: Response) {
     response.header('logout', 'true');

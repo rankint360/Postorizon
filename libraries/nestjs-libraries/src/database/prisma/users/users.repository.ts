@@ -218,6 +218,21 @@ export class UsersRepository {
       },
       data: {
         password: AuthService.hashPassword(password),
+        // Phase 5: a password reset/change revokes every existing
+        // session (AuthMiddleware compares the token's epoch claim
+        // against this column).
+        sessionEpoch: { increment: 1 },
+      },
+    });
+  }
+
+  incrementSessionEpoch(id: string) {
+    return this._user.model.user.update({
+      where: {
+        id,
+      },
+      data: {
+        sessionEpoch: { increment: 1 },
       },
     });
   }

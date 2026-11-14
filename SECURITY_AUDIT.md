@@ -191,3 +191,66 @@ no audio branch by design).
 | (e) Streamed uploads | ok |
 | (e) R2 multipart total size | **fixed** `7c05006` |
 | (e) uploadSimple size cap (both backends) | **fixed** `c407f0e` |
+
+---
+
+## Phase 5 addendum (2026-11-14) — disposition of the two structural flags
+
+Appended, not a rewrite: the findings above stand as written. Phase 5
+(branch `postorizon/phase-5`; full detail in PHASE5_REPORT.md) closed
+both flags. Two evidence corrections from the Phase 5 seam research:
+section (a)'s `canUse`/`cookies.service.ts` do not exist in source (the
+session signer is the backend `AuthService.jwt()`; cookie setting is
+inlined in `auth.controller.ts`), and section (b)'s token writers are
+`no.auth.integrations.controller.ts` plus the generic refresh funnel —
+there is no `stripe.integration.service.ts`, and token reads/writes flow
+through a shared `PrismaService`, not ~30 bare clients.
+
+### (a) Session lifetime / revocation / shared token type — **FIXED** (`d4044d2`)
+
+- **Expiry:** session tokens now carry a 30-day `exp`
+  (`SESSION_TOKEN_TTL_SECONDS`), and the `auth` cookie's lifetime was
+  aligned to it at all four set sites.
+- **Revocation:** additive `User.sessionEpoch Int @default(0)`; session
+  tokens carry the epoch they were minted under and `AuthMiddleware`
+  rejects mismatches per request (missing claim = 0). Incremented
+  atomically on password reset (`UsersRepository.updatePassword` — the
+  sole password-write seam) and by the new `POST /user/logout-all`.
+- **Token types separated where it matters:** `signJWT` gained an
+  optional options parameter; all one-shot call sites (activation,
+  reset, invite, extension, discount, enterprise, Nostr credential)
+  pass none and are byte-identical — the extension and Nostr tokens
+  depend on having no `exp` and are untouched. The dual-purpose
+  registration token was split: activation links keep the historical
+  token, only the cookie value is a session token.
+- **Residuals:** pre-Phase-5 session tokens (no `exp`, no epoch claim)
+  remain valid until the user's first revocation or cookie expiry — a
+  one-time all-users epoch bump at deploy is the recommended cutover
+  (owner's call, not done in code). Revocation is per-user, not
+  per-session; a session table is the follow-up. Flag 2 (`NOT_SECURED`)
+  is unchanged.
+
+### (b) Integration tokens at rest — **FIXED** (`fc8d442`)
+
+- **Boundary:** tokens are stored as `enc:v1:` + the repo's existing
+  `fixedEncryption` output. Encrypt-on-write in the only two write
+  funnels (`IntegrationRepository.createOrUpdateIntegration` incl. the
+  sibling propagation, and `updateIntegration` caller params);
+  decrypt-on-read in the repository getters and in `PostsRepository`'s
+  full-integration loads, so providers receive plaintext in memory
+  exactly as before. The Skool double-encryption hazard is designed
+  out: Skool's token already arrives as ciphertext and is stored
+  verbatim (it is never read back as a credential).
+- **Migration:** lazy — any connect/refresh/page-save re-stores a legacy
+  row encrypted — plus an idempotent backfill
+  (`integrations:encrypt-tokens` CLI command, following the codebase's
+  `nestjs-command` pattern). **Until the backfill runs, dormant
+  channels' tokens remain plaintext** — run it once at deploy.
+- **Residuals:** the boundary is repository-level, not a Prisma client
+  extension (verified: no direct full-row model access exists outside
+  it today); the underlying helper is deterministic fixed-IV AES-CBC
+  keyed by `JWT_SECRET`, so rotating `JWT_SECRET` requires affected
+  channels to re-connect. The database should still be treated as
+  sensitive until the backfill has run — after it, stored channel
+  tokens are ciphertext, though the DB still holds other live material
+  (encrypted with the same `JWT_SECRET`-derived key).
