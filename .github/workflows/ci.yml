@@ -48,3 +48,5 @@ jobs:
 
       - name: Build backend
         run: pnpm --filter ./apps/backend run build
+- name: Build orchestrator
+  run: pnpm --filter ./apps/orchestrator run build
