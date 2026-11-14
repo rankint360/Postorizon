@@ -36,6 +36,9 @@ model Organization {
   post                Post[]               @relation("organization")
   submittedPost       Post[]               @relation("submittedForOrg")
   postApprovals       PostApproval[]
+  aiKeys              OrganizationAiKey[]
+  brandVoiceProfiles  BrandVoiceProfile[]
+  inboxItemStates     InboxItemState[]
   sets                Sets[]
   signatures          Signatures[]
   subscription        Subscription?
@@ -355,14 +358,15 @@ model Subscription {
 }
 
 model Customer {
-  id           String        @id @default(uuid())
+  id           String             @id @default(uuid())
   name         String
   orgId        String
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
   deletedAt    DateTime?
-  organization Organization  @relation(fields: [orgId], references: [id])
+  organization Organization       @relation(fields: [orgId], references: [id])
   integrations Integration[]
+  brandVoice   BrandVoiceProfile?
 
   @@unique([orgId, name, deletedAt])
 }
@@ -1814,6 +1818,68 @@ enum ApprovalState {
   PENDING
   APPROVED
   CHANGES_REQUESTED
+}
+
+// Postorizon Phase 2: AI providers an organization can bring its own key for
+// (BYOK, MVP_SPEC §3.2.7).
+enum AiKeyProvider {
+  OPENAI
+  ANTHROPIC
+  OPENROUTER
+}
+
+// Postorizon Phase 2: user-supplied AI provider key, one per provider per
+// organization. The key itself is only ever stored encrypted
+// (AuthService.fixedEncryption, the same scheme as integration custom
+// instance details) and is never returned by the API after save.
+model OrganizationAiKey {
+  id             String        @id @default(uuid())
+  organizationId String
+  provider       AiKeyProvider
+  encryptedKey   String
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  organization   Organization  @relation(fields: [organizationId], references: [id])
+
+  @@unique([organizationId, provider])
+  @@index([organizationId])
+}
+
+// Postorizon Phase 2: persisted triage state for unified-inbox items.
+// The items themselves stay in their source tables (Comments, PostApproval);
+// this table only carries read state + assignment, keyed by the source row.
+model InboxItemState {
+  id             String       @id @default(uuid())
+  organizationId String
+  sourceType     String // 'comment' | 'approval'
+  sourceId       String
+  readAt         DateTime?
+  readById       String?
+  assigneeId     String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  @@unique([organizationId, sourceType, sourceId])
+  @@index([organizationId, assigneeId])
+}
+
+// Postorizon Phase 2: brand-voice memory for a customer group (MVP_SPEC
+// §3.2.7) — tone guidance, banned topics (agent guardrails) and example
+// posts that represent the brand's voice.
+model BrandVoiceProfile {
+  id             String     @id @default(uuid())
+  organizationId String
+  customerId     String     @unique
+  toneNotes      String?
+  bannedTopics   String[]
+  examplePostIds String[]
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  customer       Customer   @relation(fields: [customerId], references: [id])
+
+  @@index([organizationId])
 }
 
 enum SubscriptionTier {

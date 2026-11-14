@@ -47,6 +47,9 @@ export class PostsRepository {
           lt: dayjs.utc().toDate(),
         },
         state: 'QUEUE',
+        // Postorizon Phase 2: posts waiting on approval (or with changes
+        // requested) are not publishable, the sweep must not resurrect them
+        approvalState: { in: ['NOT_REQUIRED', 'APPROVED'] },
         deletedAt: null,
         parentPostId: null,
       },
@@ -71,6 +74,7 @@ export class PostsRepository {
       },
       select: {
         state: true,
+        approvalState: true,
       },
     });
   }
@@ -210,6 +214,7 @@ export class PostsRepository {
         releaseURL: true,
         releaseId: true,
         state: true,
+        approvalState: true,
         error: true,
         intervalInDays: true,
         group: true,

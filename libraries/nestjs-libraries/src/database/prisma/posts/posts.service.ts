@@ -938,12 +938,8 @@ export class PostsService {
     return this._postRepository.getPostByForWebhookId(id, integrationId);
   }
 
-  async startWorkflow(
-    taskQueue: string,
-    postId: string,
-    orgId: string,
-    state: State
-  ) {
+  /** Terminate every running publish workflow of a post (best effort). */
+  async terminatePostWorkflows(postId: string) {
     try {
       const workflows = this._temporalService.client
         .getRawClient()
@@ -965,8 +961,32 @@ export class PostsService {
         } catch (err) {}
       }
     } catch (err) {}
+  }
+
+  async startWorkflow(
+    taskQueue: string,
+    postId: string,
+    orgId: string,
+    state: State
+  ) {
+    await this.terminatePostWorkflows(postId);
 
     if (state === 'DRAFT') {
+      return;
+    }
+
+    // Postorizon Phase 2 — approval gating: a post whose approval is PENDING
+    // (or whose approver requested changes) must not be scheduled. The gate
+    // sits here because every scheduling entry point (createPost,
+    // changePostStatus, changeDate) funnels through startWorkflow, and the
+    // termination above also stops a workflow that was started before the
+    // approval was requested. PostApprovalsService restarts the workflow
+    // when the post becomes APPROVED.
+    const gate = await this._postRepository.getPostState(postId);
+    if (
+      gate?.approvalState === 'PENDING' ||
+      gate?.approvalState === 'CHANGES_REQUESTED'
+    ) {
       return;
     }
 

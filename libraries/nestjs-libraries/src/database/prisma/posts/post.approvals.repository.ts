@@ -24,6 +24,9 @@ export class PostApprovalsRepository {
         approvalState: true,
         approvalToken: true,
         organizationId: true,
+        integration: {
+          select: { providerIdentifier: true },
+        },
       },
     });
   }
@@ -39,7 +42,13 @@ export class PostApprovalsRepository {
         approvalState: true,
         organizationId: true,
         integration: {
-          select: { id: true, name: true, providerIdentifier: true },
+          select: {
+            id: true,
+            name: true,
+            providerIdentifier: true,
+            picture: true,
+            profile: true,
+          },
         },
       },
     });

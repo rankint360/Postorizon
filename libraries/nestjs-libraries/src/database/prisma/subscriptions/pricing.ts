@@ -21,21 +21,26 @@ export interface PricingInterface {
   [key: string]: PricingInnerInterface;
 }
 export const pricing: PricingInterface = {
+  // Postorizon Phase 2: a real Free plan (Phase 2 roadmap) — a small
+  // channel/post allowance with the developer surface (public API / MCP /
+  // webhooks) included. Entitlement constants only: no prices were
+  // changed anywhere in this table (FREE was already 0, and every paid
+  // tier below is untouched — final pricing is the owner's decision).
   FREE: {
     current: 'FREE',
     month_price: 0,
     year_price: 0,
-    channel: 0,
+    channel: 5,
     image_generation_count: 0,
-    posts_per_month: 0,
+    posts_per_month: 30,
     team_members: false,
     community_features: false,
     featured_by_gitroom: false,
     ai: false,
     import_from_channels: false,
     image_generator: false,
-    public_api: false,
-    webhooks: 0,
+    public_api: true,
+    webhooks: 1,
     autoPost: false,
     generate_videos: 0,
     clipping_minutes: 0,

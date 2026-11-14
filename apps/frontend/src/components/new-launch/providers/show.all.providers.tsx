@@ -40,6 +40,10 @@ import SkoolProvider from '@gitroom/frontend/components/new-launch/providers/sko
 import WhopProvider from '@gitroom/frontend/components/new-launch/providers/whop/whop.provider';
 import MeweProvider from '@gitroom/frontend/components/new-launch/providers/mewe/mewe.provider';
 import TumblrProvider from '@gitroom/frontend/components/new-launch/providers/tumblr/tumblr.provider';
+import TelegraphProvider from '@gitroom/frontend/components/new-launch/providers/telegraph/telegraph.provider';
+import MicroblogProvider from '@gitroom/frontend/components/new-launch/providers/microblog/microblog.provider';
+import GhostProvider from '@gitroom/frontend/components/new-launch/providers/ghost/ghost.provider';
+import LivejournalProvider from '@gitroom/frontend/components/new-launch/providers/livejournal/livejournal.provider';
 
 export const Providers = [
   {
@@ -181,6 +185,22 @@ export const Providers = [
   {
     identifier: 'tumblr',
     component: TumblrProvider,
+  },
+  {
+    identifier: 'telegraph',
+    component: TelegraphProvider,
+  },
+  {
+    identifier: 'microblog',
+    component: MicroblogProvider,
+  },
+  {
+    identifier: 'ghost',
+    component: GhostProvider,
+  },
+  {
+    identifier: 'livejournal',
+    component: LivejournalProvider,
   },
 ];
 export const ShowAllProviders = forwardRef((props, ref) => {

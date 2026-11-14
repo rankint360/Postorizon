@@ -18,6 +18,7 @@ import { Organization } from '@prisma/client';
 import { SubscriptionService } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/subscription.service';
 import { MastraAgent } from '@ag-ui/mastra';
 import { MastraService } from '@gitroom/nestjs-libraries/chat/mastra.service';
+import { AiKeysService } from '@gitroom/nestjs-libraries/database/prisma/ai/ai.keys.service';
 import { Request, Response } from 'express';
 import { RequestContext } from '@mastra/core/di';
 import { CheckPolicies } from '@gitroom/backend/services/auth/permissions/permissions.ability';
@@ -43,13 +44,20 @@ const copilotCors = () => ({
 export class CopilotController {
   constructor(
     private _subscriptionService: SubscriptionService,
-    private _mastraService: MastraService
+    private _mastraService: MastraService,
+    private _aiKeysService: AiKeysService
   ) {}
   @Post('/chat')
-  chatAgent(@Req() req: Request, @Res() res: Response) {
+  async chatAgent(@Req() req: Request, @Res() res: Response) {
+    // Postorizon Phase 2 (BYOK): same key resolution as the agent endpoint.
+    const byokClient = await this._aiKeysService
+      .openAiClientForOrg((req as any)?.org?.id)
+      .catch(() => null);
     if (
+      !byokClient && (
       process.env.OPENAI_API_KEY === undefined ||
       process.env.OPENAI_API_KEY === ''
+      )
     ) {
       Logger.warn('OpenAI API key not set, chat functionality will not work');
       return;
@@ -59,9 +67,14 @@ export class CopilotController {
       endpoint: '/copilot/chat',
       cors: copilotCors(),
       runtime: new CopilotRuntime(),
-      serviceAdapter: new OpenAIAdapter({
-        model: 'gpt-4.1',
-      }),
+      serviceAdapter: byokClient
+        ? new OpenAIAdapter({
+            openai: byokClient.client,
+            model: byokClient.model,
+          })
+        : new OpenAIAdapter({
+            model: 'gpt-4.1',
+          }),
     });
 
     return copilotRuntimeHandler(req, res);
@@ -74,9 +87,17 @@ export class CopilotController {
     @Res() res: Response,
     @GetOrgFromRequest() organization: Organization
   ) {
+    // Postorizon Phase 2 (BYOK): prefer the organization's own AI key
+    // for the agent runtime; fall back to the platform key when the org
+    // has not stored one (AiKeysService.openAiClientForOrg).
+    const byokClient = await this._aiKeysService
+      .openAiClientForOrg(organization.id)
+      .catch(() => null);
     if (
+      !byokClient && (
       process.env.OPENAI_API_KEY === undefined ||
       process.env.OPENAI_API_KEY === ''
+      )
     ) {
       Logger.warn('OpenAI API key not set, chat functionality will not work');
       return;
@@ -105,9 +126,14 @@ export class CopilotController {
       endpoint: '/copilot/agent',
       cors: copilotCors(),
       runtime,
-      serviceAdapter: new OpenAIAdapter({
-        model: 'gpt-4.1',
-      }),
+      serviceAdapter: byokClient
+        ? new OpenAIAdapter({
+            openai: byokClient.client,
+            model: byokClient.model,
+          })
+        : new OpenAIAdapter({
+            model: 'gpt-4.1',
+          }),
     });
 
     return copilotRuntimeHandler(req, res);

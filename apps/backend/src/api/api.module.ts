@@ -16,6 +16,9 @@ import { IntegrationManager } from '@gitroom/nestjs-libraries/integrations/integ
 import { SettingsController } from '@gitroom/backend/api/routes/settings.controller';
 import { PostsController } from '@gitroom/backend/api/routes/posts.controller';
 import { PostApprovalsController } from '@gitroom/backend/api/routes/post.approvals.controller';
+import { AiSettingsController } from '@gitroom/backend/api/routes/ai.settings.controller';
+import { InboxController } from '@gitroom/backend/api/routes/inbox.controller';
+import { AgentPlanController } from '@gitroom/backend/api/routes/agent.plan.controller';
 import { MediaController } from '@gitroom/backend/api/routes/media.controller';
 import { ClippingController } from '@gitroom/backend/api/routes/clipping.controller';
 import { MediaWidgetController } from '@gitroom/backend/api/routes/media.widget.controller';
@@ -40,6 +43,7 @@ import { SetsController } from '@gitroom/backend/api/routes/sets.controller';
 import { ThirdPartyController } from '@gitroom/backend/api/routes/third-party.controller';
 import { MonitorController } from '@gitroom/backend/api/routes/monitor.controller';
 import { NoAuthIntegrationsController } from '@gitroom/backend/api/routes/no.auth.integrations.controller';
+import { PublicPostApprovalsController } from '@gitroom/backend/api/routes/public.post.approvals.controller';
 import { EnterpriseController } from '@gitroom/backend/api/routes/enterprise.controller';
 import { OAuthAppController } from '@gitroom/backend/api/routes/oauth-app.controller';
 import { ApprovedAppsController } from '@gitroom/backend/api/routes/approved-apps.controller';
@@ -65,6 +69,9 @@ const authenticatedController = [
   SettingsController,
   PostsController,
   PostApprovalsController,
+  AiSettingsController,
+  InboxController,
+  AgentPlanController,
   MediaController,
   ClippingController,
   BillingController,
@@ -99,6 +106,7 @@ const authenticatedController = [
         MonitorController,
         EnterpriseController,
         NoAuthIntegrationsController,
+        PublicPostApprovalsController,
         OAuthController,
         MediaWidgetController,
         ClippingWidgetController,

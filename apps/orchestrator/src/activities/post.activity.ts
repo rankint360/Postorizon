@@ -122,6 +122,16 @@ export class PostActivity {
         continue;
       }
 
+      // Postorizon Phase 2: never resurrect a post that is waiting on
+      // approval (or has changes requested) — it re-enters the pipeline
+      // through PostApprovalsService when it becomes APPROVED
+      if (
+        current?.approvalState === 'PENDING' ||
+        current?.approvalState === 'CHANGES_REQUESTED'
+      ) {
+        continue;
+      }
+
       await this._temporalService.client
         .getRawClient()
         .workflow.signalWithStart('postWorkflowV112', {

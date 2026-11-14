@@ -13,6 +13,15 @@ import { PostsService } from '@gitroom/nestjs-libraries/database/prisma/posts/po
 import { PostsRepository } from '@gitroom/nestjs-libraries/database/prisma/posts/posts.repository';
 import { PostApprovalsService } from '@gitroom/nestjs-libraries/database/prisma/posts/post.approvals.service';
 import { PostApprovalsRepository } from '@gitroom/nestjs-libraries/database/prisma/posts/post.approvals.repository';
+import { AiKeysRepository } from '@gitroom/nestjs-libraries/database/prisma/ai/ai.keys.repository';
+import { AiKeysService } from '@gitroom/nestjs-libraries/database/prisma/ai/ai.keys.service';
+import { AiChatService } from '@gitroom/nestjs-libraries/database/prisma/ai/ai.chat.service';
+import { BrandVoiceRepository } from '@gitroom/nestjs-libraries/database/prisma/ai/brand.voice.repository';
+import { BrandVoiceService } from '@gitroom/nestjs-libraries/database/prisma/ai/brand.voice.service';
+import { InboxRepository } from '@gitroom/nestjs-libraries/database/prisma/inbox/inbox.repository';
+import { InboxService } from '@gitroom/nestjs-libraries/database/prisma/inbox/inbox.service';
+import { WeeklyPlanRepository } from '@gitroom/nestjs-libraries/database/prisma/agent/weekly.plan.repository';
+import { WeeklyPlanService } from '@gitroom/nestjs-libraries/database/prisma/agent/weekly.plan.service';
 import { IntegrationManager } from '@gitroom/nestjs-libraries/integrations/integration.manager';
 import { MediaService } from '@gitroom/nestjs-libraries/database/prisma/media/media.service';
 import { MediaRepository } from '@gitroom/nestjs-libraries/database/prisma/media/media.repository';
@@ -80,6 +89,15 @@ import { AdminStatsService } from '@gitroom/nestjs-libraries/database/prisma/adm
     PostsRepository,
     PostApprovalsService,
     PostApprovalsRepository,
+    AiKeysRepository,
+    AiKeysService,
+    AiChatService,
+    BrandVoiceRepository,
+    BrandVoiceService,
+    InboxRepository,
+    InboxService,
+    WeeklyPlanRepository,
+    WeeklyPlanService,
     StripeService,
     PaymentService,
     PaymentProviderManager,

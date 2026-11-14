@@ -52,6 +52,7 @@ import { extend } from 'dayjs';
 import { isUSCitizen } from './helpers/isuscitizen.utils';
 import { StatisticsModal } from '@gitroom/frontend/components/launches/statistics';
 import { MissingReleaseModal } from '@gitroom/frontend/components/launches/missing-release.modal';
+import { ApprovalModal } from '@gitroom/frontend/components/launches/approval.modal';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import i18next from 'i18next';
 import { AddEditModal } from '@gitroom/frontend/components/new-launch/add.edit.modal';
@@ -330,6 +331,23 @@ const usePostActions = (onMutate?: () => void) => {
         children: (
           <MissingReleaseModal postId={id} onSuccess={mutate} />
         ),
+        size: '60%',
+      });
+    },
+    [modal, t, mutate]
+  );
+
+  const openApproval = useCallback(
+    (post: any) => () => {
+      modal.openModal({
+        title: t('approval', 'Approval'),
+        closeOnClickOutside: true,
+        closeOnEscape: true,
+        withCloseButton: true,
+        classNames: {
+          modal: 'w-[100%] max-w-[600px]',
+        },
+        children: <ApprovalModal postId={post.id} onSuccess={mutate} />,
         size: '60%',
       });
     },
@@ -691,7 +709,7 @@ export const ListView = () => {
       : t('no_posts', 'No posts');
 
   // Use shared post actions hook
-  const { editPost, deletePost, copyDebugJson, openStatistics, openMissingRelease, openPost } = usePostActions();
+  const { editPost, deletePost, copyDebugJson, openStatistics, openMissingRelease, openApproval, openPost } = usePostActions();
 
   // Group posts by date
   const groupedPosts = useMemo(() => {
@@ -740,6 +758,7 @@ export const ListView = () => {
                   state={post.state}
                   statistics={openStatistics(post.id)}
                   missingRelease={openMissingRelease(post.id)}
+                  approval={openApproval(post)}
                   openPost={openPost(post)}
                   editPost={editPost(post, false)}
                   duplicatePost={editPost(post, true)}
@@ -798,7 +817,7 @@ export const CalendarColumn: FC<{
   const fetch = useFetch();
 
   // Use shared post actions hook
-  const { editPost, deletePost, copyDebugJson, openStatistics, openMissingRelease, openPost } = usePostActions();
+  const { editPost, deletePost, copyDebugJson, openStatistics, openMissingRelease, openApproval, openPost } = usePostActions();
   const postList = useMemo(() => {
     if (display === 'week') {
       const start = getDate.startOf('hour').valueOf();
@@ -1083,6 +1102,7 @@ export const CalendarColumn: FC<{
                   state={post.state}
                   statistics={openStatistics(post.id)}
                   missingRelease={openMissingRelease(post.id)}
+                  approval={openApproval(post)}
                   openPost={openPost(post)}
                   editPost={editPost(post, false)}
                   duplicatePost={editPost(post, true)}
@@ -1211,6 +1231,7 @@ const CalendarItem: FC<{
   deletePost: () => void;
   statistics: () => void;
   missingRelease?: () => void;
+  approval?: () => void;
   openPost: () => void;
   integrations: Integrations[];
   state: State;
@@ -1237,6 +1258,7 @@ const CalendarItem: FC<{
     deletePost,
     showTime,
     missingRelease,
+    approval,
     openPost,
   } = props;
   const { disableXAnalytics } = useVariables();
@@ -1306,6 +1328,38 @@ const CalendarItem: FC<{
             creationMethod={post.creationMethod}
             ringColor="var(--new-bgColor)"
           />
+        </div>
+      )}
+      {post.approvalState === 'PENDING' && (
+        <div
+          className={clsx(
+            'absolute -top-[6px] -end-[6px] z-20 w-[18px] h-[18px] rounded-full bg-amber-500 flex items-center justify-center text-white text-[11px] font-bold cursor-pointer',
+            display === 'month' && 'mobile:hidden'
+          )}
+          data-tooltip-id="tooltip"
+          data-tooltip-content={t('approval_pending', 'Awaiting approval')}
+          onClick={(e) => {
+            e.stopPropagation();
+            approval?.();
+          }}
+        >
+          …
+        </div>
+      )}
+      {post.approvalState === 'CHANGES_REQUESTED' && (
+        <div
+          className={clsx(
+            'absolute -top-[6px] -end-[6px] z-20 w-[18px] h-[18px] rounded-full bg-orange-500 flex items-center justify-center text-white text-[11px] font-bold cursor-pointer',
+            display === 'month' && 'mobile:hidden'
+          )}
+          data-tooltip-id="tooltip"
+          data-tooltip-content={t('approval_changes_state', 'Changes requested')}
+          onClick={(e) => {
+            e.stopPropagation();
+            approval?.();
+          }}
+        >
+          !
         </div>
       )}
       <div
@@ -1383,6 +1437,17 @@ const CalendarItem: FC<{
         >
           <Preview />
         </div>
+        {approval && (
+          <div
+            className={clsx(
+              'hidden group-hover:block hover:underline cursor-pointer',
+              post?.tags?.[0]?.tag?.color && 'text-shadow-tags'
+            )}
+            onClick={approval}
+          >
+            <ApprovalIcon />
+          </div>
+        )}
         <div
           className={clsx(
             'hidden group-hover:block hover:underline cursor-pointer',
@@ -1562,6 +1627,27 @@ const Duplicate = () => {
         d="M27 5H9C8.46957 5 7.96086 5.21071 7.58579 5.58579C7.21071 5.96086 7 6.46957 7 7V9H5C4.46957 9 3.96086 9.21071 3.58579 9.58579C3.21071 9.96086 3 10.4696 3 11V25C3 25.5304 3.21071 26.0391 3.58579 26.4142C3.96086 26.7893 4.46957 27 5 27H23C23.5304 27 24.0391 26.7893 24.4142 26.4142C24.7893 26.0391 25 25.5304 25 25V23H27C27.5304 23 28.0391 22.7893 28.4142 22.4142C28.7893 22.0391 29 21.5304 29 21V7C29 6.46957 28.7893 5.96086 28.4142 5.58579C28.0391 5.21071 27.5304 5 27 5ZM23 11V13H5V11H23ZM23 25H5V15H23V25ZM27 21H25V11C25 10.4696 24.7893 9.96086 24.4142 9.58579C24.0391 9.21071 23.5304 9 23 9H9V7H27V21Z"
         fill="currentColor"
       />
+    </svg>
+  );
+};
+const ApprovalIcon = () => {
+  const t = useT();
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="15"
+      height="15"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      data-tooltip-id="tooltip"
+      data-tooltip-content={t('approval', 'Approval')}
+    >
+      <circle cx="12" cy="12" r="10" />
+      <polyline points="8.5 12.5 11 15 15.5 9.5" />
     </svg>
   );
 };
