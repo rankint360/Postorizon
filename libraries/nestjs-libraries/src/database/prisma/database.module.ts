@@ -70,6 +70,8 @@ import { ErrorsRepository } from '@gitroom/nestjs-libraries/database/prisma/erro
 import { ErrorsService } from '@gitroom/nestjs-libraries/database/prisma/errors/errors.service';
 import { AdminStatsRepository } from '@gitroom/nestjs-libraries/database/prisma/admin-stats/admin-stats.repository';
 import { AdminStatsService } from '@gitroom/nestjs-libraries/database/prisma/admin-stats/admin-stats.service';
+import { PlatformAdminRepository } from '@gitroom/nestjs-libraries/database/prisma/platform-admin/platform-admin.repository';
+import { PlatformAdminService } from '@gitroom/nestjs-libraries/database/prisma/platform-admin/platform-admin.service';
 
 @Global()
 @Module({
@@ -149,6 +151,8 @@ import { AdminStatsService } from '@gitroom/nestjs-libraries/database/prisma/adm
     ErrorsService,
     AdminStatsRepository,
     AdminStatsService,
+    PlatformAdminRepository,
+    PlatformAdminService,
   ],
   get exports() {
     return this.providers;

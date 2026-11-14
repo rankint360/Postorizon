@@ -13,6 +13,10 @@ interface MenuItemInterface {
   role?: string[];
   hide?: boolean;
   requireBilling?: boolean;
+  // Postorizon Phase 6: platform-admin entries are gated on the
+  // User.isPlatformAdmin flag, NOT on `role` (which is the org role —
+  // every org owner is a SUPERADMIN there).
+  platformAdminOnly?: boolean;
   onClick?: () => void;
 }
 
@@ -264,6 +268,37 @@ export const useMenuItem = () => {
       path: '/settings',
       role: ['ADMIN', 'USER', 'SUPERADMIN'],
     },
+    {
+      // Postorizon Phase 6: platform admin console entry — visible
+      // only when the DB user carries isPlatformAdmin.
+      name: 'Admin',
+      icon: (
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="20"
+          height="21"
+          viewBox="0 0 20 21"
+          fill="none"
+        >
+          <path
+            d="M10 1.833L2.917 4.358V9.75C2.917 14.192 5.875 17.878 10 19.167C14.125 17.878 17.083 14.192 17.083 9.75V4.358L10 1.833Z"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+          <path
+            d="M7.083 10.167L9.167 12.25L13.333 8.083"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      ),
+      path: '/admin/overview',
+      platformAdminOnly: true,
+    },
   ] satisfies MenuItemInterface[] as MenuItemInterface[];
 
   return {
@@ -289,6 +324,9 @@ export const TopMenu: FC = () => {
               .filter((f) => {
                 if (f.hide) {
                   return false;
+                }
+                if (f.platformAdminOnly) {
+                  return !!user?.isPlatformAdmin;
                 }
                 if (f.requireBilling && !billingEnabled) {
                   return false;
@@ -317,6 +355,9 @@ export const TopMenu: FC = () => {
           .filter((f) => {
             if (f.hide) {
               return false;
+            }
+            if (f.platformAdminOnly) {
+              return !!user?.isPlatformAdmin;
             }
             if (f.requireBilling && !billingEnabled) {
               return false;

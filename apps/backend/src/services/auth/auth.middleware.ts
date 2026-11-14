@@ -67,13 +67,22 @@ export class AuthMiddleware implements NestMiddleware {
         throw new HttpForbiddenException();
       }
 
+      // Phase 6: platform-admin suspension. Checked here — on the real
+      // signed-in user, before the impersonation swap — so a suspended
+      // user's existing sessions die on their next request, exactly
+      // like the epoch check above.
+      if (user.suspendedAt) {
+        throw new HttpForbiddenException();
+      }
+
       const impersonate = req.cookies.impersonate || req.headers.impersonate;
       if (user?.isSuperAdmin && impersonate) {
         const loadImpersonate = await this._organizationService.getUserOrg(
           impersonate
         );
 
-        if (loadImpersonate) {
+        // Phase 6: impersonation cannot enter a suspended organization.
+        if (loadImpersonate && !loadImpersonate.organization.suspendedAt) {
           user = loadImpersonate.user;
           user.isSuperAdmin = true;
           delete user.password;
@@ -105,7 +114,11 @@ export class AuthMiddleware implements NestMiddleware {
       delete user.password;
       const organization = (
         await this._organizationService.getOrgsByUserId(user.id)
-      ).filter((f) => !f.users[0].disabled);
+        // Phase 6: a suspended organization can never become the
+        // request org. Members keep access to their other orgs; a user
+        // whose orgs are all suspended gets the same 403 as a user
+        // with no org at all (setOrg stays undefined below).
+      ).filter((f) => !f.users[0].disabled && !f.suspendedAt);
       const setOrg =
         organization.find((org) => org.id === orgHeader) ||
         organization.find((org) => org.subscription) ||

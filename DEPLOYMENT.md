@@ -371,6 +371,38 @@ service (it is in the compose file since Phase 4's F1) and restart; the
 registers use fixed workflow ids, so a later start is clean and
 duplicate-safe.
 
+### 10.4 Grant the first platform admin (Phase 6) — DO THIS
+
+The Phase 6 operator console (`/admin/overview` in the app, API under
+`/admin`) is gated on the `User.isPlatformAdmin` flag, which no UI can
+grant before an admin exists — the first grant is a shell one-off,
+using the same commands app as §10.1:
+
+```bash
+# in the app container (compose service name as in §10.1), or against a
+# local build of apps/commands:
+node ./dist/apps/command/src/main.js admin:grant you@example.com
+node ./dist/apps/command/src/main.js admin:revoke you@example.com
+```
+
+Notes:
+
+- The email must belong to an existing **local** account (register
+  first, then grant). Grant is idempotent; unknown emails fail loudly.
+- `admin:grant` is the ONLY way to create the first platform admin.
+  Afterwards, admins manage further grants/revokes from the console
+  (Users page), where every mutation lands in the admin audit log.
+- Safeguards apply everywhere, CLI included: an admin cannot suspend
+  or demote themselves in the UI/API, and the **last active platform
+  admin cannot be demoted or suspended through any path** — if you
+  ever need to remove the final admin, grant a successor first.
+- CLI grant/revoke writes no audit-log row (there is no acting admin);
+  the command output is the record.
+- `isPlatformAdmin` is distinct from the upstream `isSuperAdmin` flag:
+  the latter still gates legacy operator features (announcements, the
+  /admin/errors + /admin/stats pages) and does NOT open the Phase 6
+  console, nor vice versa.
+
 ## Appendix — Phase 4 compose fixes (already applied)
 
 - **F1** `RUN_CRON: 'true'` added to the `postiz` service (§5).

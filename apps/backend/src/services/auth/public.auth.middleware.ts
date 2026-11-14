@@ -64,6 +64,15 @@ export class PublicAuthMiddleware implements NestMiddleware {
         return;
       }
 
+      // Phase 6: a suspended organization's API keys / OAuth tokens
+      // stop working at the same funnel as the main API's org pick.
+      if (org.suspendedAt) {
+        res
+          .status(HttpStatus.FORBIDDEN)
+          .json({ msg: 'Organization suspended' });
+        return;
+      }
+
       this.setOrg(req, org);
       const includeDeleted =
         (req.headers['x-postiz-include-deleted'] as string)?.trim() === 'true';
@@ -92,6 +101,13 @@ export class PublicAuthMiddleware implements NestMiddleware {
           res
             .status(HttpStatus.NOT_FOUND)
             .json({ msg: 'Organization not found' });
+          return;
+        }
+
+        if (overrideOrg.suspendedAt) {
+          res
+            .status(HttpStatus.FORBIDDEN)
+            .json({ msg: 'Organization suspended' });
           return;
         }
 
