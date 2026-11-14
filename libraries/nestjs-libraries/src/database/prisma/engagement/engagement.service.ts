@@ -89,11 +89,13 @@ const LABEL_TO_BUCKET: Record<string, keyof NormalizedMetrics | 'providerEngagem
  * post metrics are cumulative lifetime totals, so aggregates always use
  * the LATEST snapshot per post, never a sum across snapshots.
  *
- * Scheduling: sampling is triggered through POST /engagement/sample.
- * There is no safe in-repo cron substrate for this service (Temporal
- * schedules live in the orchestrator app and are registered per
- * workflow at worker boot); wiring a recurring Temporal schedule for
- * sampling is the documented remain — see PHASE3_REPORT.md.
+ * Scheduling: sampling is triggered through POST /engagement/sample
+ * (on-demand) and, since the Phase 3 remediation, recurringly by the
+ * orchestrator's engagementSamplingWorkflow, which calls
+ * sampleAllOrganizations() on a fixed cadence. (This codebase has no
+ * Temporal Schedule registrations; the workflow is an infinite
+ * sleep + continueAsNew loop started at orchestrator boot — the same
+ * pattern as missingPostWorkflow. See REMEDIATION_REPORT.md.)
  */
 @Injectable()
 export class EngagementService {
@@ -240,6 +242,45 @@ export class EngagementService {
       }
     }
     return { candidates: candidates.length, sampled, skipped, failed };
+  }
+
+  /**
+   * One recurring-sweep pass over every organization (used by the
+   * orchestrator's engagementSamplingWorkflow). Each organization is
+   * sampled with sampleOrganization's own bounds (default 30-day
+   * window, 50-post cap), sequentially — provider rate limits make
+   * naive parallelism unsafe — and a failure in one organization
+   * never aborts the rest of the sweep.
+   */
+  async sampleAllOrganizations(options?: { days?: number; limit?: number }) {
+    const organizations =
+      await this._engagementRepository.listOrganizationIds();
+
+    let sampled = 0;
+    let skipped = 0;
+    let failed = 0;
+    let organizationsFailed = 0;
+    for (const organization of organizations) {
+      try {
+        const result = await this.sampleOrganization(
+          organization.id,
+          options
+        );
+        sampled += result.sampled;
+        skipped += result.skipped;
+        failed += result.failed;
+      } catch (err) {
+        organizationsFailed++;
+      }
+    }
+
+    return {
+      organizations: organizations.length,
+      organizationsFailed,
+      sampled,
+      skipped,
+      failed,
+    };
   }
 
   getPostSnapshots(organizationId: string, postId: string) {

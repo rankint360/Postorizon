@@ -207,6 +207,19 @@ export class InboxService {
     };
   }
 
+  async listMembers(organizationId: string) {
+    const rows = await this._inboxRepository.listOrgMembers(organizationId);
+    return rows.map((row) => {
+      const user = row.user;
+      return {
+        id: user.id,
+        name:
+          [user.name, user.lastName].filter(Boolean).join(' ') || user.email,
+        email: user.email,
+      };
+    });
+  }
+
   async updateState(
     organizationId: string,
     userId: string,

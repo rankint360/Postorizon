@@ -11,6 +11,7 @@ import {
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { PostsService } from '@gitroom/nestjs-libraries/database/prisma/posts/posts.service';
+import { BrandingService } from '@gitroom/nestjs-libraries/database/prisma/branding/branding.service';
 import { TrackService } from '@gitroom/nestjs-libraries/track/track.service';
 import { RealIP } from 'nestjs-real-ip';
 import { UserAgent } from '@gitroom/nestjs-libraries/user/user.agent';
@@ -37,7 +38,8 @@ export class PublicController {
     private _trackService: TrackService,
     private _agentGraphInsertService: AgentGraphInsertService,
     private _postsService: PostsService,
-    private _subscriptionService: SubscriptionService
+    private _subscriptionService: SubscriptionService,
+    private _brandingService: BrandingService
   ) {}
   @Post('/agent')
   async createAgent(@Body() body: { text: string; apiKey: string }) {
@@ -55,7 +57,7 @@ export class PublicController {
   async getPreview(@Param('id') id: string) {
     // the batch only links the posts in the dashboard, it stays out of the
     // public preview
-    return (await this._postsService.getPostsRecursively(id, true)).map(
+    const posts = (await this._postsService.getPostsRecursively(id, true)).map(
       ({ childrenPost, batchId, ...p }) => ({
         ...p,
         ...(p.integration
@@ -71,6 +73,16 @@ export class PublicController {
           : {}),
       })
     );
+    if (!posts.length) {
+      return posts;
+    }
+    // Phase 3 white-label: the branding of the post's organization
+    // (safe display fields only — never the org id itself), mirroring
+    // PublicPostApprovalsController.
+    const branding = await this._brandingService.getBranding(
+      posts[0].organizationId
+    );
+    return posts.map((p) => ({ ...p, branding }));
   }
 
   @Get(`/posts/:id/comments`)

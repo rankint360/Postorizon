@@ -48,6 +48,12 @@ export default async function Auth(
       </div>
     );
   }
+  const rawBranding = post[0]?.branding || null;
+  const branding =
+    rawBranding &&
+    (rawBranding.portalName || rawBranding.logoUrl || rawBranding.accentColor)
+      ? rawBranding
+      : null;
   return (
     <PreviewCommentsProvider
       previewId={id}
@@ -55,7 +61,25 @@ export default async function Auth(
       organizationId={post[0].organizationId}
     >
       <div className="mx-auto w-full max-w-[1346px] p-[12px] flex flex-col gap-[8px] text-newTextColor">
-        <div className="flex bg-newBgColorInner rounded-[12px] min-h-[80px] px-[20px] py-[12px] items-center gap-[20px] flex-wrap">
+        <div
+          className="flex bg-newBgColorInner rounded-[12px] min-h-[80px] px-[20px] py-[12px] items-center gap-[20px] flex-wrap"
+          {...(branding?.accentColor
+            ? { style: { borderTop: `4px solid ${branding.accentColor}` } }
+            : {})}
+        >
+          {!!branding?.logoUrl && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={branding.logoUrl}
+              alt={branding.portalName || ''}
+              className="h-[40px] max-w-[180px] object-contain"
+            />
+          )}
+          {!!branding?.portalName && (
+            <div className="flex flex-col">
+              <div className="text-[13px] opacity-70">{branding.portalName}</div>
+            </div>
+          )}
           <Link
             href="/"
             className="flex items-center gap-[10px] text-textColor"

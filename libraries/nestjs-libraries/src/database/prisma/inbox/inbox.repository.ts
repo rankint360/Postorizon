@@ -129,6 +129,15 @@ export class InboxRepository {
     });
   }
 
+  listOrgMembers(organizationId: string) {
+    return this._userOrganization.model.userOrganization.findMany({
+      where: { organizationId, disabled: false },
+      select: {
+        user: { select: { id: true, name: true, lastName: true, email: true } },
+      },
+    });
+  }
+
   isOrgMember(organizationId: string, userId: string) {
     return this._userOrganization.model.userOrganization.findFirst({
       where: { organizationId, userId, disabled: false },

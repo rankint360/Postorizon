@@ -15,8 +15,18 @@ import { Injectable } from '@nestjs/common';
 export class EngagementRepository {
   constructor(
     private _snapshot: PrismaRepository<'postEngagementSnapshot'>,
-    private _post: PrismaRepository<'post'>
+    private _post: PrismaRepository<'post'>,
+    private _organization: PrismaRepository<'organization'>
   ) {}
+
+  /** All live organization ids (drives the recurring sampling sweep). */
+  listOrganizationIds() {
+    return this._organization.model.organization.findMany({
+      where: { deletedAt: null },
+      select: { id: true },
+      orderBy: { createdAt: 'asc' },
+    });
+  }
 
   /** Published posts eligible for sampling: released, recent, org-scoped. */
   listSampleCandidates(organizationId: string, since: Date, take: number) {

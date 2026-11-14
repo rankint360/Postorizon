@@ -29,12 +29,24 @@ const stripHtml = (value: string) =>
  */
 export default async function Report(props: {
   params: Promise<{ token: string }>;
+  searchParams?: Promise<{ from?: string; to?: string }>;
 }) {
   const params = await props.params;
   const { token } = params;
+  const searchParams = await props.searchParams;
+  const fromParam = searchParams?.from;
+  const toParam = searchParams?.to;
   const t = await getT();
 
-  const res = await internalFetch(`/public/reports/${token}`);
+  const periodQuery = [
+    fromParam ? `from=${encodeURIComponent(fromParam)}` : null,
+    toParam ? `to=${encodeURIComponent(toParam)}` : null,
+  ]
+    .filter(Boolean)
+    .join('&');
+  const res = await internalFetch(
+    `/public/reports/${token}${periodQuery ? `?${periodQuery}` : ''}`
+  );
   const report = res.ok ? await res.json() : null;
 
   if (!report?.customer) {
@@ -47,6 +59,35 @@ export default async function Report(props: {
 
   const branding = report.branding || null;
   const totals = report.totals;
+
+  const activePeriodDays = (() => {
+    if (!fromParam && !toParam) {
+      return 30;
+    }
+    if (fromParam && toParam) {
+      const diffDays = Math.round(
+        (new Date(toParam).getTime() - new Date(fromParam).getTime()) /
+          (24 * 3600 * 1000)
+      );
+      return [7, 30, 90].includes(diffDays) ? diffDays : null;
+    }
+    return null;
+  })();
+
+  const periodPresets: { days: number; label: string; href: string }[] = [
+    { days: 7, label: t('report_period_7d', 'Last 7 days') },
+    { days: 30, label: t('report_period_30d', 'Last 30 days') },
+    { days: 90, label: t('report_period_90d', 'Last 90 days') },
+  ].map((preset) => {
+    const toIso = new Date().toISOString();
+    const fromIso = new Date(
+      Date.now() - preset.days * 24 * 3600 * 1000
+    ).toISOString();
+    return {
+      ...preset,
+      href: `/report/${token}?from=${fromIso}&to=${toIso}`,
+    };
+  });
 
   const totalsCards: { label: string; value: number }[] = [
     { label: t('report_posts_published', 'Posts published'), value: totals.postsPublished },
@@ -85,6 +126,22 @@ export default async function Report(props: {
             {dayjs.utc(report.period.to).format('MMM D, YYYY')}
           </div>
         </div>
+      </div>
+
+      <div className="flex items-center gap-[8px] flex-wrap px-[4px]">
+        {periodPresets.map((preset) => (
+          <a
+            key={preset.days}
+            href={preset.href}
+            className={
+              preset.days === activePeriodDays
+                ? 'text-[13px] font-semibold bg-btnPrimary text-white border border-btnPrimary rounded-[8px] px-[12px] py-[6px]'
+                : 'text-[13px] bg-newBgColorInner border border-newBorder rounded-[8px] px-[12px] py-[6px]'
+            }
+          >
+            {preset.label}
+          </a>
+        ))}
       </div>
 
       <div className="grid grid-cols-2 minCustom:grid-cols-3 gap-[12px]">

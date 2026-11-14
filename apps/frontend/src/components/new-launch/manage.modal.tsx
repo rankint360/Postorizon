@@ -1482,6 +1482,7 @@ export const ManageModal: FC<AddEditModalProps> = (props) => {
             },
           }}
         >
+          <div className="mb-[12px]">{!dummy && <BestTimeChips onPick={setDateDraft} />}</div>
           <DatePickerPanel
             date={dateDraft}
             onChange={setDateDraft}

@@ -43,6 +43,11 @@ export class InboxController {
     });
   }
 
+  @Get('/members')
+  getMembers(@GetOrgFromRequest() org: Organization) {
+    return this._inboxService.listMembers(org.id);
+  }
+
   @Patch('/:sourceType/:sourceId/state')
   updateState(
     @GetOrgFromRequest() org: Organization,

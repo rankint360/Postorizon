@@ -48,6 +48,12 @@ interface InboxResponse {
   nextCursor: string | null;
 }
 
+interface Member {
+  id: string;
+  name: string;
+  email: string;
+}
+
 type SourceFilter = 'all' | 'comment' | 'approval';
 
 // post.content can contain HTML — strip tags before displaying it as text.
@@ -130,6 +136,38 @@ export const InboxComponent = () => {
       refreshWhenHidden: false,
       refreshWhenOffline: false,
     }
+  );
+
+  const loadMembers = useCallback(async (): Promise<Member[]> => {
+    try {
+      const res = await fetch('/inbox/members');
+      if (!res.ok) {
+        return [] as Member[];
+      }
+      return (await res.json()) as Member[];
+    } catch {
+      return [] as Member[];
+    }
+  }, [fetch]);
+
+  const { data: membersData } = useSWR<Member[]>(
+    'inbox-members',
+    loadMembers,
+    {
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
+      revalidateIfStale: false,
+      revalidateOnMount: true,
+      refreshWhenHidden: false,
+      refreshWhenOffline: false,
+    }
+  );
+
+  const members: Member[] = membersData ?? ([] as Member[]);
+
+  const memberById = useMemo(
+    () => new Map(members.map((member) => [member.id, member] as const)),
+    [members]
   );
 
   const items = useMemo(() => data?.items || [], [data]);
@@ -388,6 +426,9 @@ export const InboxComponent = () => {
             const approvalState = item.approvalState || item.post?.approvalState;
             const isAssignedToMe =
               !!currentUserId && item.assigneeId === currentUserId;
+            const assigneeName = item.assigneeId
+              ? memberById.get(item.assigneeId)?.name
+              : undefined;
             const postExcerpt = truncate(stripHtml(item.post?.content));
             return (
               <div
@@ -462,7 +503,9 @@ export const InboxComponent = () => {
                   {isAssignedToMe
                     ? t('inbox_assigned_to_you', 'Assigned to you')
                     : item.assigneeId
-                      ? t('inbox_assigned', 'Assigned')
+                      ? assigneeName
+                        ? `${t('inbox_assigned_to', 'Assigned to')} ${assigneeName}`
+                        : t('inbox_assigned', 'Assigned')
                       : t('inbox_unassigned', 'Unassigned')}
                 </div>
 
@@ -491,6 +534,26 @@ export const InboxComponent = () => {
                       ? t('inbox_unassign', 'Unassign')
                       : t('inbox_assign_to_me', 'Assign to me')}
                   </Button>
+                  <select
+                    aria-label={t('inbox_assign_to', 'Assign to')}
+                    value={item.assigneeId || ''}
+                    disabled={updatingKey === item.key}
+                    onChange={(e) =>
+                      updateState(item, {
+                        assigneeId: e.target.value || null,
+                      })
+                    }
+                    className="h-[36px] px-[12px] rounded-[6px] border border-fifth bg-input text-inputText text-[14px] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <option value="">
+                      {t('inbox_unassigned', 'Unassigned')}
+                    </option>
+                    {members.map((member) => (
+                      <option key={member.id} value={member.id}>
+                        {member.name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 {item.sourceType === 'comment' ? (

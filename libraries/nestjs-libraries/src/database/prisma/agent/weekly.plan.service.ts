@@ -22,6 +22,16 @@ export type WeeklyPlanResult = {
   historyPostsUsed: number;
   /** Phase 3: sampled posts behind the performance summary (0 = none). */
   performancePostsUsed: number;
+  /**
+   * Phase 3 remediation: how drafts were placed — 'best-slots' when at
+   * least one draft landed on a measured best weekday/hour slot from
+   * the performance summary, 'ladder' when the Phase 2 fixed
+   * 10:00 + 2h ladder placed everything (always the case when the
+   * group has no slot data).
+   */
+  placementMode: 'best-slots' | 'ladder';
+  /** Drafts (ideas) placed on a best slot; 0 in pure ladder mode. */
+  slotPlacements: number;
 };
 
 /**
@@ -189,19 +199,60 @@ export class WeeklyPlanService {
     const created: WeeklyPlanResult['created'] = [];
     let droppedOverCap = 0;
 
+    // Phase 3 remediation — placement by best slot. When the group's
+    // performance summary carries measured best slots, drafts are
+    // placed at the upcoming occurrences of those slots inside the
+    // plan week (ranked order; each slot used at most once per run;
+    // the per-day cap counting above applies unchanged). Ideas that
+    // fit no slot fall back to the ladder below, and when there is no
+    // slot data at all the ladder runs exactly as it did in Phase 2/3.
+    // Slot weekday/hour are the summary's (computed at UTC offset 0,
+    // as getPerformanceSummary is called without an offset here) and
+    // are read against the plan days' dayjs-local calendar — the same
+    // convention the prompt text already uses for these slots.
+    const bestSlots = performance?.bestSlots || [];
+    const usedSlotKeys = new Set<string>();
+    let slotPlacements = 0;
+
     for (const idea of allowed) {
-      const dayIndex = load.findIndex((count) => count < maxPostsPerDay);
-      if (dayIndex === -1) {
-        droppedOverCap++;
-        continue;
+      let date: string | undefined;
+
+      for (const slot of bestSlots) {
+        const slotDayIndex = days.findIndex(
+          (day) => day.day() === slot.weekday
+        );
+        if (slotDayIndex === -1 || load[slotDayIndex] >= maxPostsPerDay) {
+          continue;
+        }
+        const slotKey = `${slotDayIndex}:${slot.hour}`;
+        if (usedSlotKeys.has(slotKey)) {
+          continue;
+        }
+        usedSlotKeys.add(slotKey);
+        load[slotDayIndex]++;
+        slotPlacements++;
+        date = days[slotDayIndex]
+          .hour(slot.hour)
+          .minute(0)
+          .second(0)
+          .format('YYYY-MM-DDTHH:mm:ss');
+        break;
       }
-      const slotInDay = load[dayIndex];
-      load[dayIndex]++;
-      const date = days[dayIndex]
-        .hour(10 + (slotInDay % 5) * 2)
-        .minute(0)
-        .second(0)
-        .format('YYYY-MM-DDTHH:mm:ss');
+
+      if (!date) {
+        const dayIndex = load.findIndex((count) => count < maxPostsPerDay);
+        if (dayIndex === -1) {
+          droppedOverCap++;
+          continue;
+        }
+        const slotInDay = load[dayIndex];
+        load[dayIndex]++;
+        date = days[dayIndex]
+          .hour(10 + (slotInDay % 5) * 2)
+          .minute(0)
+          .second(0)
+          .format('YYYY-MM-DDTHH:mm:ss');
+      }
 
       const group = makeId(10);
       for (const integration of integrations) {
@@ -259,6 +310,8 @@ export class WeeklyPlanService {
       droppedOverCap,
       historyPostsUsed: history.length,
       performancePostsUsed: performance?.postsSampled || 0,
+      placementMode: slotPlacements > 0 ? 'best-slots' : 'ladder',
+      slotPlacements,
     };
   }
 

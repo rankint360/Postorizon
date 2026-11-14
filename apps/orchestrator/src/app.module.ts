@@ -8,6 +8,8 @@ import { IntegrationsActivity } from '@gitroom/orchestrator/activities/integrati
 import { VideoActivity } from '@gitroom/orchestrator/activities/video.activity';
 import { MediaActivity } from '@gitroom/orchestrator/activities/media.activity';
 import { ClippingActivity } from '@gitroom/orchestrator/activities/clipping.activity';
+import { EngagementActivity } from '@gitroom/orchestrator/activities/engagement.activity';
+import { EngagementSamplingRegisterModule } from '@gitroom/nestjs-libraries/temporal/engagement.sampling.register';
 import { VideoModule } from '@gitroom/nestjs-libraries/videos/video.module';
 import { HealthController } from '@gitroom/orchestrator/health.controller';
 
@@ -19,11 +21,13 @@ const activities = [
   VideoActivity,
   MediaActivity,
   ClippingActivity,
+  EngagementActivity,
 ];
 @Module({
   imports: [
     DatabaseModule,
     VideoModule,
+    EngagementSamplingRegisterModule,
     getTemporalModule(true, require.resolve('./workflows'), activities),
   ],
   controllers: [HealthController],
