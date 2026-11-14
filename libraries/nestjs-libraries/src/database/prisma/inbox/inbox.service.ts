@@ -79,6 +79,18 @@ export class InboxService {
 
     const items: InboxItem[] = [];
 
+    // Approval rows carry only a bare userId (no `user` relation in the
+    // schema), so resolve their authors in one batched lookup.
+    const authorById = new Map(
+      (
+        await this._inboxRepository.getUsersByIds([
+          ...new Set(
+            approvals.map((a) => a.userId).filter((id): id is string => !!id)
+          ),
+        ])
+      ).map((u) => [u.id, u] as const)
+    );
+
     for (const comment of comments) {
       items.push({
         key: `comment:${comment.id}`,
@@ -109,15 +121,16 @@ export class InboxService {
       if (currentState !== 'PENDING' && currentState !== 'CHANGES_REQUESTED') {
         continue;
       }
+      const author = approval.userId
+        ? authorById.get(approval.userId)
+        : undefined;
       items.push({
         key: `approval:${approval.id}`,
         sourceType: 'approval',
         sourceId: approval.id,
         body: approval.comment,
-        authorName: approval.user
-          ? [approval.user.name, approval.user.lastName]
-              .filter(Boolean)
-              .join(' ') || null
+        authorName: author
+          ? [author.name, author.lastName].filter(Boolean).join(' ') || null
           : null,
         viaLink: approval.viaLink,
         createdAt: approval.createdAt,

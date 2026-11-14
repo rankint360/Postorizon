@@ -32,7 +32,8 @@ export class InboxRepository {
     private _comments: PrismaRepository<'comments'>,
     private _postApproval: PrismaRepository<'postApproval'>,
     private _inboxState: PrismaRepository<'inboxItemState'>,
-    private _userOrganization: PrismaRepository<'userOrganization'>
+    private _userOrganization: PrismaRepository<'userOrganization'>,
+    private _user: PrismaRepository<'user'>
   ) {}
 
   listOpenComments(organizationId: string, take: number, before?: Date) {
@@ -62,9 +63,22 @@ export class InboxRepository {
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
       take,
       include: {
-        user: { select: { name: true, lastName: true } },
+        // NOTE: PostApproval has no `user` relation in the schema (userId
+        // is a bare scalar), so the author is resolved separately via
+        // getUsersByIds — including `user` here fails the backend build.
         post: { select: queuePostSelect },
       },
+    });
+  }
+
+  /** Authors of approval rows, by user id (PostApproval has no user relation). */
+  getUsersByIds(userIds: string[]) {
+    if (!userIds.length) {
+      return Promise.resolve([]);
+    }
+    return this._user.model.user.findMany({
+      where: { id: { in: userIds } },
+      select: { id: true, name: true, lastName: true },
     });
   }
 
