@@ -1,0 +1,50 @@
+name: CI — build verification
+
+# Phase 0 purpose: prove the Postorizon codebase installs and builds cleanly
+# in a normal environment (the sandbox used for the rebrand could not finish
+# the Prisma engine download). Runs the remediation sequence from
+# PHASE0_REPORT.md §4: approved build scripts are declared in the root
+# package.json (pnpm.onlyBuiltDependencies), then install, Prisma generate,
+# frontend build, backend build.
+
+on:
+  push:
+    branches: [main, "postorizon/**"]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+      # Prisma generate only renders the client; it does not connect.
+      DATABASE_URL: "postgresql://ci:ci@localhost:5432/ci"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        # version read from package.json "packageManager" (pnpm@10.6.1)
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma client
+        run: pnpm run prisma-generate
+
+      - name: Build frontend
+        run: pnpm --filter ./apps/frontend run build
+
+      - name: Build backend
+        run: pnpm --filter ./apps/backend run build

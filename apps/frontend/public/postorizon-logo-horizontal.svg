@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 292 64" role="img" aria-label="Postorizon logo, for light backgrounds">
+  <defs>
+    <linearGradient id="dawn" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0" stop-color="#FFB03A"/>
+      <stop offset="0.45" stop-color="#FF5A3C"/>
+      <stop offset="0.72" stop-color="#FF4D6D"/>
+      <stop offset="1" stop-color="#7A5AF8"/>
+    </linearGradient>
+  </defs>
+  <path d="M6 44 a26 26 0 0 1 52 0" fill="none" stroke="#7A5AF8" stroke-width="5" stroke-linecap="round"/>
+  <path d="M14 44 a18 18 0 0 1 36 0" fill="none" stroke="#FF4D6D" stroke-width="5" stroke-linecap="round"/>
+  <path d="M24 44 a8 8 0 0 1 16 0 Z" fill="url(#dawn)"/>
+  <rect x="6" y="44" width="52" height="5" rx="2.5" fill="#0B0E1A"/>
+  <text x="76" y="44" font-family="'Space Grotesk','Segoe UI',Arial,sans-serif" font-size="31" font-weight="700" letter-spacing="-0.5" fill="#0B0E1A">postorizon</text>
+</svg>
